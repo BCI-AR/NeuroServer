@@ -6,7 +6,7 @@ This program uses GNU autoconf/automake/libtool.
 
 To regenerate configuration scripts, do this:
 \code
-aclocal ; autoconf ; automake -a ; autoheader
+aclocal ; autoheader ; autoconf ; automake -a
 \endcode
 then configure with
 \code
