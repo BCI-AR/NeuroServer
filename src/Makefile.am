@@ -1,11 +1,18 @@
-# neurod is the OpenEEG Server Demon NeuroServer
+# nsd is the NeuroServer daemon
 
-AM_CFLAGS= -Wall
+AM_CFLAGS= -Wall -g
 AM_CPPFLAGS= -I.
 
-bin_PROGRAMS = neurod testedf
+bin_PROGRAMS = nsd modeegdriver readedf writeedf
 
-neurod_SOURCES = neurod.c neurod.h openedf.c openedf.h
+nsd_SOURCES = nsd.c nsutil.c nsnet.c cmdhandler.c openedf.c \
+config.h cmdhandler.h edfmacros.h nsd.h nsnet.h nsutil.h openedf.h pctimer.h
 
-testedf_SOURCES = testedf.c openedf.c openedf.h edfmacros.h
+modeegdriver_SOURCES = modeegdriver.c nsser.c nsutil.c openedf.c nsnet.c \
+config.h edfmacros.h nsnet.h nsutil.h openedf.h
 
+readedf_SOURCES = readedf.c nsutil.c nsnet.c openedf.c pctimer.c \
+config.h edfmacros.h nsnet.h nsutil.h pctimer.h openedf.h
+
+writeedf_SOURCES = writeedf.c nsutil.c nsnet.c pctimer.c openedf.c \
+config.h edfmacros.h openedf.h nsutil.h nsnet.h pctimer.h
