@@ -46,7 +46,7 @@ void printHeader(const struct EDFDecodedHeader *hdr)
 	printf("The data record seconds is %f\n", hdr->dataRecordSeconds);
 }
 
-void handleSamples(sock_t sock_fd, int packetCounter, int chan, unsigned short *vals)
+void handleSamples(sock_t sock_fd, int packetCounter, int chan, short *vals)
 {
 	char buf[MAXLEN];
 	int bufPos = 0;
