@@ -4,21 +4,22 @@ AppVerName=NeuroServer @VERSION@
 CreateAppDir=true
 DefaultGroupName=NeuroServer
 DefaultDirName={pf}\NeuroServer
-;Compression=lzma
-;SolidCompression=yes
+Compression=lzma
+SolidCompression=yes
 AllowRootDirectory=true
 EnableDirDoesntExistWarning=true
 UsePreviousAppDir=false
 ShowLanguageDialog=no
+OutputDir=c:\build
 OutputBaseFilename=@PACKAGE@-@VERSION@-win
 VersionInfoVersion=@VERSION@
 VersionInfoCompany=Rudi Cilibrasi
 
 [Files]
-Source: ..\src\nsd.exe; DestDir: {app}
-Source: ..\src\modeegdriver.exe; DestDir: {app}
-Source: ..\src\readedf.exe; DestDir: {app}
-Source: ..\src\writeedf.exe; DestDir: {app}
+Source: @WINBUILDDIR@/nsd.exe; DestDir: {app}
+Source: @WINBUILDDIR@/modeegdriver.exe; DestDir: {app}
+Source: @WINBUILDDIR@/readedf.exe; DestDir: {app}
+Source: @WINBUILDDIR@/writeedf.exe; DestDir: {app}
 [Icons]
 Name: {group}\NSD; Filename: {app}\nsd.exe
 Name: {group}\MODEEGDRIVER; Filename: {app}\modeegdriver.exe

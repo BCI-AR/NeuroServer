@@ -48,6 +48,7 @@ Make these directories:
 /home/cilibrar/.wine/c/windows
 /home/cilibrar/.wine/c/windows/system
 And then copy these from your InnoSetup directory:
+/home/cilibrar/.wine/c/windows/system/ISCC.exe
 /home/cilibrar/.wine/c/windows/system/Default.isl
 /home/cilibrar/.wine/c/windows/system/ISCmplr.dll
 /home/cilibrar/.wine/c/windows/system/ISCmplr.dls
@@ -62,7 +63,7 @@ And then copy these from your InnoSetup directory:
 /home/cilibrar/.wine/c/windows/system/isbunzip.dll
 /home/cilibrar/.wine/c/windows/system/isbzip.dll
 /home/cilibrar/.wine/c/windows/system/islzma.dll
-(you may just copy *.dll *.dls *.isl *.e32 *.bmp)
+(you may just copy ISCC.exe *.dll *.dls *.isl *.e32 *.bmp)
 
 This file will be created for you automatically by wine:
 /home/cilibrar/.wine/c/windows/win.ini

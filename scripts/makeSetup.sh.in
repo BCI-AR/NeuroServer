@@ -1,0 +1,13 @@
+#!/bin/sh
+WINECBUILDDIR=$HOME/.wine/c/build
+(
+cd @TOPDIR@
+./configure  --host=i586-mingw32msvc-gcc --build=i586-mingw32mwvc-gcc --program-suffix=.exe --prefix=@TOPDIR@/scripts/buildtmp
+make
+make install
+cp @TOPDIR@/scripts/buildtmp/bin/* $WINECBUILDDIR
+i586-mingw32msvc-strip $WINECBUILDDIR/*.exe
+cp @TOPDIR@/scripts/NeuroServer.iss $WINECBUILDDIR
+)
+
+wineconsole ISCC.EXE c:\\build\\NeuroServer.iss
