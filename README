@@ -1,0 +1,5 @@
+NeuroServer
+
+A program to translate between TCP network messages and serial packets for
+the modular EEG device.
+

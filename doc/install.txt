@@ -1,0 +1,16 @@
+To install is easy:
+
+./configure
+make
+
+This should create the executable src/neurod
+
+If you would like the executable to be installed somewhere, just do
+make install
+
+In order to start it, simply invoke the
+
+neurod
+
+command from a shell or startup script.
+

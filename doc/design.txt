@@ -1,0 +1,111 @@
+NeuroServer
+
+The NeuroServer insulates the visualization and analysis software
+from the OpenEEG firmware and hardware, and host hardware.  It is the
+only software that runs on the host and communicates directly with
+the OpenEEG firmware via the serial port (besides HyperTerminal etc).  
+Its normal mode of operation is to establish communication with the
+OpenEEG, query it with a status command, then put it in running mode.
+Once this is complete, the OpenEEG server binds to port 8336 and waits
+for TCP connections.  When a new connection is accepted, it is
+denoted either a "controller" or an "observer" connection.  When a
+new connection is accepted, if there is not already a "controller"
+connection, then it is designated as such.  If there is already one,
+then all other connections must be observers, so that there can be
+only one controller connection active at any time.  Importantly, each
+connection's type never changes.
+
+The NeuroServer will support ASCII-oriented commands in the spirit
+of internet RFC's.  As such, it will be testable using, for example,
+
+telnet localhost 8336
+
+Over the TCP link, the following commands are allowed:
+
+GetConnStatus (for all connections)
+prints either "controller" or "observer", depending on the type of the
+connection
+
+GetEDFHeader  (for all connections)
+This command sends back a 256 * (channelcount + 1) EDF header that
+includes all the information available about the currently active
+configuration in the OpenEEG.  Because it is EDF format, all numbers
+are encoded as space-padded ASCII strings, and are thus language
+neutral.  Because most visualization software already supports the EDF
+format, this approach will be the easiest to integrate and the most
+compatible.
+
+SendSamples  (for all connections)
+This command puts this connection in "sample sending" mode.  Now, each
+time the firmware sends a complete round of 1 sample for each channel,
+the server will translate this into the ASCII format of an EDF
+data record (containing just 1 sample per channel) and send it to all
+connected clients in "sample sending" mode.
+
+StopSamples  (for all connections)
+This command puts this connection in "samples stopped" mode.  It will
+not receive further sampled data until a SendSamples command is issued.
+
+GetConfigVar <varname>   (for all connections)
+This command returns the value of a particular OpenEEG configuration
+variable, such as baud or samplehz.  Note that this command should only
+be used when GetEDFHeader is insufficient, as these variables are
+tightly coupled to firmware versions.  The NeuroServer maintains
+a local copy of the OpenEEG active configuration, so that it is
+not necessary to actually send the associated "get" command to the
+microcontroler; the cached result can be returned instead.
+
+StopListening             (for controller connections only)
+This command prevents further new connections from being accepted.
+
+StartListening            (for controller connections only)
+This command allows more clients to connect via TCP to the server.
+
+Execute <command string>  (for controller connections only)
+
+This command allows the user to send a command string directly to the
+OpenEEG module firmware.  If the OpenEEG is in "running" mode, a
+double-newline escape code will be sent to put it into "command" mode,
+and then the command string will be executed, and any results returned
+through the TCP connection.
+
+On startup, the NeuroServer by default tries to establish a
+communications link with the OpenEEG hardware.  If a special
+"-i filename.edf" option is given as a command-line argument on startup,
+then instead of trying to find the EEG hardware connected to a serial
+port, the NeuroServer will just read the EDF format data
+file specified and play the data forward as if it were being sampled
+from a test subject.  Another important command line option is
+"-o filename.edf" which causes all the sampled EEG data to be logged to
+the EDF file specified.  Together, these two options will enable
+OpenEEG users to share EEG recordings over the internet, or replay
+interesting EEG samples with different visualization software or
+settings.  Perhaps most importantly, they will enable excellent
+testing of the OpenEEG client skins, and even allow people to develop
+client skins without actually having the physical OpenEEG hardware.
+
+PART III:  OPENEEG VISUALIZATION CLIENT SKIN
+
+To actually visualize EEG signals or signal components, some sort of
+graphical display system will be necessary.  An OpenEEG Visualization
+Client Skin is an application that connects to an OpenEEG server via
+a specified IP address and port number using a TCP connection.
+This connection then streams data into the application for display
+using a variety of algorithms.
+
+The NeuroServer TCP protocol is language-neutral and, indeed,
+operating-system and hardware-neutral; it inherits these properties from
+ASCII and EDF file formats.  Thus, it should be possible to have
+simultaneously connected and displaying visualization applications like:
+
+1) a Gnome-based Linux visualization system in Ruby
+2) a Java-based Windows application
+3) a cross-platform GTK based C/C++ program under Windows and Linux
+
+Another type of OpenEEG Client (but not a "visualization skin") would be
+a command-line program that produces musical tones under windows
+according to the preconfigured signal characteristics, for example to
+replicate the traditional audio biofeedback techniques.  In effect, any
+program that can create a local-destination TCP socket may interoperate
+with the OpenEEG.
+

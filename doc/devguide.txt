@@ -1,0 +1,19 @@
+NeuroServer
+
+Developer Guide
+
+This program uses GNU autoconf/automake.
+
+To regenerate configuration scripts, do this:
+
+aclocal ; autoconf ; automake -a
+
+then configure with
+
+./configure
+
+to regenerate the Makefile's.
+
+
+To create a package, use the command
+make dist
