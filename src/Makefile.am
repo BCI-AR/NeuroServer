@@ -22,6 +22,5 @@ pctimer.c config.h edfmacros.h nsnet.h nsutil.h pctimer.h openedf.h
 writeedf_SOURCES = writeedf.c nsutil.c nsnet.c monitor.c monitor.h \
 pctimer.c openedf.c config.h edfmacros.h openedf.h nsutil.h nsnet.h pctimer.h
 
-
 writebdf_SOURCES = writebdf.c nsutil.c nsnet.c monitor.c monitor.h \
 pctimer.c openedf.c config.h edfmacros.h openedf.h nsutil.h nsnet.h pctimer.h
