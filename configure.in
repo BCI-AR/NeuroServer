@@ -1,5 +1,5 @@
 # Process this file with autoconf to produce a configure script.
-AC_INIT(src/neurod.c)
+AC_INIT(src/nsd.c)
 AC_PROG_CC
 AM_CONFIG_HEADER(src/config.h)
 AM_INIT_AUTOMAKE(NeuroServer, 0.73)
