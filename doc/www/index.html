@@ -1,0 +1,71 @@
+<html>
+<head>
+<title>
+NeuroServer
+</title>
+</head>
+<body>
+<CENTER><H2>NeuroServer</H2></CENTER>
+An open-source multi-platform EEG signal transceiver using TCP/IP and
+EDF format.
+<H3>Requirements:</H3>
+For Windows users, just download the self-extracting binary available here:
+<a href="NeuroServer-0.7.4-win.exe">NeuroServer-0.7.4-win.exe</a>
+
+
+Linux users can download the source archive:
+<a href="NeuroServer-0.7.4.tar.gz">NeuroServer-0.7.4.tar.gz</a>
+To build, type
+<pre>
+./configure
+make
+make install
+</pre>
+To start, first turn on your ModEEG.  Then, start
+<pre>
+NSD
+</pre>
+which can be run from command-line or from your menu option:
+<pre>
+Start Menu | Programs | NeuroServer | NSD 
+</pre>
+NSD is the NeuroServer Daemon that must be running to enable network access.
+The next step is to start the hardware driver:
+<pre>
+modeegdriver
+</pre>
+If your ModEEG is not connected to <b>COM1:</b>, then use the <b>-d</b> syntax:
+<pre>
+modeegdriver -d COM2
+</pre>
+This is also available in
+<pre>
+Start Menu | Programs | NeuroServer | MODEEGDRIVER 
+</pre>
+in another window.
+Now that you have both of these running, clients are ready to be connected.
+At this point, you are ready to try BioPro, BrainBay, or EEGMIR by connecting
+to the server running on your localhost at port 8336 by default.  This
+system also allows you to save EEG data to a file using the writeedf.exe
+command.  You must run writeedf from a command-line, and must provide a
+filename such as 
+<pre>
+writeedf eegdata.edf
+</pre>
+Similarly, to play back your
+data, use the
+<pre>
+readedf eegdata.edf
+</pre>
+command instead of starting your
+modeegdriver.  In this way, you can review the same data under several
+different applications and parameters.  To get a summary of parameters,
+enter either of these commands with no parameters.
+<H3>Developer Requirements:</H3>
+For Windows users, you must install <a href="http://www.mingw.org/">MinGW and
+MSYS.</a>  The versions that I test with are
+<a href="http://prdownloads.sf.net/mingw/MinGW-3.1.0-1.exe?download">MinGW-3.1.0-1.exe</a>
+and <a href="http://prdownloads.sf.net/mingw/MSYS-1.0.10.exe?download">MSYS-1.0.10.exe</a>.
+Once you have these two installed, you can build the executable under windows.
+</body>
+</html>

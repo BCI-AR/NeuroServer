@@ -2,7 +2,7 @@
 AC_INIT(src/nsd.c)
 AC_PROG_CC
 AM_CONFIG_HEADER(src/config.h)
-AM_INIT_AUTOMAKE(NeuroServer, 0.74)
+AM_INIT_AUTOMAKE(NeuroServer, 0.7.4)
 
 # Checks for programs.
 
@@ -29,6 +29,7 @@ AC_CHECK_FUNCS(strerror)
 AC_OUTPUT([
 Makefile
 src/Makefile
+scripts/NeuroServer.iss
 ])
 
 
