@@ -1,25 +1,54 @@
 /** \file
- * \author Rudi Cilibrasi
- *
- * Device driver for the modularEEG from the OpenEEG project.
- *
- * So far protocols P2 and P3 are supported.  
- * 
+
+  \author Rudi Cilibrasi
+  
+  Device driver for the modularEEG from the OpenEEG project.
+ 
+  So far protocols P2 and P3 are supported. (For details regarding these protocols  
+  see \ref eegprotocol)
+ 
  */
+
+/*  
+ NeuroServer 
+ 
+ A collection of programs to translate between EEG data and TCP network
+ messages. This is a part of the OpenEEG project, see http://openeeg.sf.net
+ for details.
+             
+ Copyright (C) 2003, 2004 Rudi Cilibrasi (cilibrar@ofb.net)
+                 
+ This library is free software; you can redistribute it and/or
+ modify it under the terms of the GNU Lesser General Public
+ License as published by the Free Software Foundation; either
+ version 2.1 of the License, or (at your option) any later version.
+                     
+ This library is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ Lesser General Public License for more details.
+                                                 
+ You should have received a copy of the GNU Lesser General Public
+ License along with this library; if not, write to the Free Software
+ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
+                                                             
+*/
 
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+/// include neuroserver network support
 #include <nsnet.h>
 #include <nsutil.h>
+/// include neuroserver serial port functions
 #include <nsser.h>
+/// include neuroserver European Data Format (EDF) functions
 #include <openedf.h>
+/// include Software VERSION number/system information
 #include <config.h>
-/// maximum size of a protocol packet 
-#define PROTOWINDOW 24
-/// maximum size of a serial data packet
-#define MAXPACKETSIZE 17
+/// maximum size of a serial port data chunk
+#define PROTOWINDOW 17
 
 char buf[PROTOWINDOW];
 sock_t sock_fd;
@@ -323,21 +352,22 @@ int main(int argc, char **argv)
 	ser_t serport;
 	char EDFPacket[MAXHEADERLEN];
 	int EDFLen = MAXHEADERLEN;
+	/// buffer for reading from serial port
 	char smallbuf[PROTOWINDOW];
 	char *hostname = NULL;
 	char *deviceName = NULL;
-	//DEFAULTHOST;
+	/// DEFAULTHOST;
 	unsigned short portno = 0;
-	// DEFAULTPORT;
+	///  DEFAULTPORT;
 	struct timeval when;
 
 	rprintf("ModEEG Driver v. %s-%s\n", VERSION, OSTYPESTR);
 
 	rinitNetworking();
-
+	/// process command line inputs
 	for (i = 1; argv[i]; ++i) {
 		if (argv[i][0] == '-' && argv[i][1] == 'h') {
-			printHelp();
+			printHelp();		
 			exit(0);
 		}
 		if (argv[i][0] == '-' && argv[i][1] == 'd') {

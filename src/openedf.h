@@ -1,3 +1,27 @@
+/*
+NeuroServer
+ 
+A collection of programs to translate between EEG data and TCP network
+messages. This is a part of the OpenEEG project, see http://openeeg.sf.net
+for details.
+    
+Copyright (C) 2003, 2004 Rudi Cilibrasi (cilibrar@ofb.net)
+     
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+         
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+             
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
+*/
+                
 #ifndef __OPENEDF_H
 #define __OPENEDF_H
 
@@ -12,50 +36,50 @@
 #pragma pack(1)
 
 struct EDFPackedHeader {
-	char dataFormat[8];
-	char localPatient[80];
-	char localRecorder[80];
-	char recordingStartDate[8];
-	char recordingStartTime[8];
-	char headerRecordBytes[8];
-	char manufacturerID[44];
-	char dataRecordCount[8];
-	char dataRecordSeconds[8];
-	char dataRecordChannels[4];
+	char dataFormat[8];			// identification code
+	char localPatient[80];			// local subject identification [ASCII}
+	char localRecorder[80];			// local recording identification [ASCII}
+	char recordingStartDate[8];	        // dd.mm.yy local start date of recording [ASCII]
+	char recordingStartTime[8];		// hh.mm.ss local start time of recording [ASCII}
+	char headerRecordBytes[8];		// number of bytes in header record [ASCII}
+	char manufacturerID[44];		// version/data format/manufact. [ASCII}
+	char dataRecordCount[8];		// number of data records, -1 if unknown
+	char dataRecordSeconds[8];		// duration of a data record in seconds [ASCII] z.B. 1
+	char dataRecordChannels[4];		// number of recording channels in data record
 };
 
 struct EDFPackedChannelHeader {
-	char label[16];
-	char transducer[80];
-	char dimUnit[8];
-	char physMin[8];
-	char physMax[8];
-	char digiMin[8];
-	char digiMax[8];
-	char prefiltering[80];
-	char sampleCount[8];
-	char reserved[32];
+	char label[16];				// channel label
+	char transducer[80];			// type of transducer
+	char dimUnit[8];			// physical dimension of channel, e.g. uV 
+	char physMin[8];			// minimal physical value (in above units)
+	char physMax[8];			// maximal physical value
+	char digiMin[8];			// minimal digital value
+	char digiMax[8];			// max. digital value
+	char prefiltering[80];			// pre-filtering description
+	char sampleCount[8];			// number of samples in each record/data chunk
+	char reserved[32];			// reserved for future extensions
 };
 
 #pragma pack(4)
 
 struct EDFDecodedHeader {
-	int headerRecordBytes;
-	int dataRecordCount;
-	int dataRecordChannels;
+	int headerRecordBytes;			// size of header in bytes
+	int dataRecordCount;			// number of data records/chunks
+	int dataRecordChannels;			// number of channels
 	char dataFormat[9];
 	char localPatient[81];
 	char localRecorder[81];
 	char recordingStartDate[9];
 	char recordingStartTime[9];
 	char manufacturerID[45];
-	double dataRecordSeconds;
+	double dataRecordSeconds;		// duration of a data record in seconds
 };
 
 struct EDFDecodedChannelHeader {
 	int sampleCount;
-	double physMin, physMax;
-	double digiMin, digiMax;
+	double physMin, physMax;		// physical maxima/minima
+	double digiMin, digiMax;  		// digital maxima/minima -->gain
 	char label[17];
 	char transducer[81];
 	char dimUnit[9];

@@ -1,3 +1,27 @@
+/*
+NeuroServer
+ 
+A collection of programs to translate between EEG data and TCP network
+messages. This is a part of the OpenEEG project, see http://openeeg.sf.net
+for details.
+    
+Copyright (C) 2003, 2004 Rudi Cilibrasi (cilibrar@ofb.net)
+     
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+         
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+             
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
+*/
+                
 #include <assert.h>
 #include <time.h>
 #include <stdio.h>
@@ -288,11 +312,12 @@ int fetchSamples(const struct EDFInputIterator *edfi, short *samples, FILE *fp)
 int isValidREDF(const struct EDFDecodedConfig *cfg)
 {
 	int i;
-	if (cfg->hdr.dataRecordSeconds != 1.0) {
+/*	if (cfg->hdr.dataRecordSeconds != 1.0) {
 		setLastError("The data record must be exactly 1 second, not %f.", 
 								 cfg->hdr.dataRecordSeconds);
 		return 0;
 	}
+*/
 	if (cfg->hdr.dataRecordChannels < 1) {
 		setLastError("The data record must have at least one channel.");
 		return 0;
@@ -343,6 +368,7 @@ int makeREDFConfig(struct EDFDecodedConfig *result, const struct EDFDecodedConfi
 {
 	int newSamples, i;
 	*result = *source;
+/*
 	if (source->hdr.dataRecordSeconds != 1.0) {
 		result->hdr.dataRecordSeconds = 1;
 		newSamples = ((double)source->chan[0].sampleCount) / 
@@ -350,6 +376,7 @@ int makeREDFConfig(struct EDFDecodedConfig *result, const struct EDFDecodedConfi
 		for (i = 0; i < source->hdr.dataRecordChannels; ++i)
 			result->chan[i].sampleCount = newSamples;
 	}
+*/
 	setEDFHeaderBytes(result);
 	strcpy(result->hdr.recordingStartDate, getDMY());
 	strcpy(result->hdr.recordingStartTime, getHMS());

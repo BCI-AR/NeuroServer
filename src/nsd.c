@@ -1,3 +1,30 @@
+/*
+
+NeuroServer
+ 
+A collection of programs to translate between EEG data and TCP network
+messages. This is a part of the OpenEEG project, see http://openeeg.sf.net
+for details.
+    
+Copyright (C) 2003, 2004 Rudi Cilibrasi (cilibrar@ofb.net)
+     
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+         
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+            
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
+                
+*/
+                
+
 #include <stdio.h>
 #include <ctype.h>
 #include <fcntl.h>
@@ -86,6 +113,30 @@ void sendResponseBadRequest(int cliInd)
 	sendClientMsg(cliInd, "400 BAD REQUEST\r\n");
 }
 
+
+/** command for Controllers: send stiumuls to EEG Client 
+
+    stimulus 0 activates a stimulus in EEG device 0
+    
+ */
+void cmdStimulus(int cliInd)
+{
+	if (clients[cliInd].role == Controller) {
+		int who;
+		fetchParameters(&who, 1);
+		if (who >= 0 && who < clientCount && clients[who].role == EEG) {
+		 	rprintf("Sending stimulus command from %d to %d \n", cliInd,who);
+			sendResponseOK(cliInd);
+			sendClientMsgNL(who,"stimulus");
+			return;
+		}
+	}
+	sendResponseBadRequest(cliInd);
+}
+
+
+
+
 void cmdRole(int cliInd)
 {
 	rprintf("Handling role with cliInd %d\n", cliInd);
@@ -124,7 +175,7 @@ void cmdWatch(int cliInd)
 
 void cmdDataFrame(int cliInd)
 {
-	int vals[3];
+	int vals[MAXEDFCHANNELS];
 	int samples[MAXEDFCHANNELS+2];
 	/* vals[0] == pktCounter */
 	/* vals[1] == channelCount */
@@ -299,12 +350,14 @@ int main()
 	fd_set toread, toerr;
 	rprintf("NSD (NeuroServer Daemon) v. %s-%s\n", VERSION, OSTYPESTR);
 	enregisterCommand("hello", cmdHello);
+	enregisterCommand("test", cmdHello);
 	enregisterCommand("control", cmdControl);
 	enregisterCommand("display", cmdDisplay);
 	enregisterCommand("close", cmdClose);
 	enregisterCommand("status", cmdStatus);
 	enregisterCommand("role", cmdRole);
 	enregisterCommand("eeg", cmdEEG);
+	enregisterCommand("stimulus", cmdStimulus);
 	enregisterCommand("setheader", cmdSetHeader);
 	enregisterCommand("getheader", cmdGetHeader);
 	enregisterCommand("!", cmdDataFrame);
