@@ -197,14 +197,14 @@ int main(int argc, char **argv)
 	writeString(sock_fd, cmdbuf, &ob);
 	getOK(sock_fd, &ib);
 	t0 = pctimer();
-	FD_ZERO(&toread);
-	FD_SET(sock_fd, &toread);
 	for (;;) {
 		for (;;) {
 			char *cur;
 			int vals[MAXCHANNELS + 5];
 			int curParam = 0;
 			int devNum, packetCounter=0, channels=0, *samples;
+			FD_ZERO(&toread);
+			FD_SET(sock_fd, &toread);
 			rselect(sock_fd+1, &toread, NULL, NULL);
 			linePos = readline(sock_fd, lineBuf, sizeof(EDFPacket), &ib);
 			if (isEOF(sock_fd, &ib))
