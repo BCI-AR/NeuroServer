@@ -24,6 +24,12 @@ int isP2, isP3;
 int isValidPacket(unsigned short nchan, unsigned short *samples);
 int doesMatchP3(unsigned char c, unsigned short *vals,int *nsamples);
 int doesMatchP2(unsigned char c, unsigned short *vals,int *nsamples);
+int mGetOK(sock_t fd, struct InputBuffer *ib);
+
+int mGetOK(sock_t fd, struct InputBuffer *ib)
+{
+	return 0;
+}
 
 static struct EDFDecodedConfig modEEGCfg = {
 		{ 0,   // header bytes, to be set later
@@ -141,7 +147,7 @@ void handleSamples(int packetCounter, int chan, unsigned short *vals)
 		bufPos += sprintf(buf+bufPos, " %d", vals[i]);
 	bufPos += sprintf(buf+bufPos, "\r\n");
 	writeString(sock_fd, buf, &ob);
-	getOK(sock_fd, &ib);
+	mGetOK(sock_fd, &ib);
 }
 
 int doesMatchP3(unsigned char c,  unsigned short *vals,int *nsamples)
@@ -266,6 +272,7 @@ int doesMatchP2(unsigned char c, unsigned short *vals,int *nsamples)
 
 int main(int argc, char **argv)
 {
+	char responseBuf[MAXLEN];
 	int retval;
 	ser_t serport;
 	char EDFPacket[MAXHEADERLEN];
@@ -306,11 +313,11 @@ int main(int argc, char **argv)
 	rprintf("Serial port %s opened.\n", DEVICENAME);
 	
 	writeString(sock_fd, "eeg\n", &ob);
-	getOK(sock_fd, &ib);
+	mGetOK(sock_fd, &ib);
 	writeString(sock_fd, "setheader ", &ob);
 	writeBytes(sock_fd, EDFPacket, EDFLen, &ob);
 	writeString(sock_fd, "\n", &ob);
-	getOK(sock_fd, &ib);
+	mGetOK(sock_fd, &ib);
 	updateMaxFd(sock_fd);
 #ifndef __MINGW32__
 	updateMaxFd(serport);
@@ -337,7 +344,7 @@ int main(int argc, char **argv)
 				eatCharacter(smallbuf[i]);
 		}
 		if (FD_ISSET(sock_fd, &toread)) {
-			rprintf("Extra characters to read\n");
+			my_read(sock_fd, responseBuf, MAXLEN, &ib);
 		}
 		if (isEOF(sock_fd, &ib)) {
 					rprintf("Server died, exitting.\n");

@@ -261,11 +261,12 @@ int rrecv(sock_t fd, char *read_buf, size_t count)
 	int winerr;
 	if (retval == SOCKET_ERROR) {
 		winerr = WSAGetLastError();
-		if (winerr == WSAEISCONN)
+		if (winerr == WSAEISCONN || winerr == WSAEWOULDBLOCK)
 			retval = 0;
 		if (winerr == WSAENOTCONN || winerr == WSAECONNRESET)
 			retval = -1;
-		monitorLog(PLACE_RRECV, winerr);
+		if (retval == -1)
+			monitorLog(PLACE_RRECV, winerr);
 	}
 #endif
 	return retval;
@@ -304,16 +305,20 @@ void initInputBuffer(struct InputBuffer *ib)
 	memset(ib, 0, sizeof(*ib));
 }
 
-int my_read(sock_t fd, char *ptr, struct InputBuffer *ib)
+int my_read(sock_t fd, char *ptr, size_t maxlen, struct InputBuffer *ib)
 {
 	//setblocking(fd);
 	//again:
+	if (maxlen == 1) {
+		rprintf("Inefficient myread(%d)\n", maxlen);
+	}
 	if (ib->read_cnt <= 0) {
-			if ( (ib->read_cnt = rrecv(fd, ib->read_buf, MAXLEN)) < 0) {
+			if ( (ib->read_cnt = rrecv(fd, ib->read_buf, maxlen)) < 0) {
 #ifdef __MINGW32__
 				int winerr;
 				winerr = WSAGetLastError();
-				monitorLog(PLACE_MYREAD, winerr);
+				if (winerr != WSAEWOULDBLOCK)
+					monitorLog(PLACE_MYREAD, winerr);
 				if (winerr == WSAECONNABORTED || winerr == WSAECONNRESET) {
 					ib->isEOF = 1;
 					return -1;
@@ -381,7 +386,7 @@ size_t writen(sock_t fd, const void *vptr, size_t len, struct OutputBuffer *ob)
 	return len;
 }
 
-int readline(sock_t fd, void *vptr, size_t maxlen, struct InputBuffer *ib)
+int readline(sock_t fd, char *vptr, size_t maxlen, struct InputBuffer *ib)
 {
 	size_t n;
 	int rc;
@@ -390,7 +395,7 @@ int readline(sock_t fd, void *vptr, size_t maxlen, struct InputBuffer *ib)
 	setblocking(fd);
 	ptr = vptr;
 	for (n = 1; n < maxlen; n++) {
-		rc = my_read(fd, &c, ib);
+		rc = my_read(fd, &c, maxlen, ib);
 		if (rc == -1)
 			return -1;
 		if (rc == 0) {
@@ -424,17 +429,14 @@ int inputBufferEmpty(const struct InputBuffer *ib)
 int getOK(sock_t sock_fd, struct InputBuffer *ib)
 {
 	int retcode;
-
+	rprintf("Waiting for OK\n");
 	do {
 		retcode = getResponseCode(sock_fd, ib);
 	} while (retcode == 0);
 	if (retcode == -1) {
-		rprintf("Server died, exitting.\n");
+		rprintf("nsnet.o: Server died, exitting.\n");
 		exit(0);
 	}
-
-//	printf("getOK retcode now %d\n", retcode);
-		
 	if (retcode != 200) {
 		printf("Got bad response: %d\n", retcode);
 		exit(1);

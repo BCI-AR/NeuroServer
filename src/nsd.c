@@ -17,7 +17,7 @@ enum RoleCode { Unknown,  EEG, Display, Controller };
 
 struct EDFDecodedConfig current;
 
-static char lineBuf[MAXLEN+1];
+static char *lineBuf;
 
 struct Client {
 	sock_t fd;
@@ -26,8 +26,10 @@ struct Client {
 	int headerLen;
 	time_t lastAlive;
 	int isDisplaying[MAXCLIENTS];;
+	int linePos;
 	struct InputBuffer ib;
 	struct OutputBuffer ob;
+	char lineBuf[MAXLEN];
 	char headerBuf[MAXHEADERLEN];
 };
 
@@ -173,8 +175,8 @@ void cmdSetHeader(int cliInd)
 	}
 	buf = getLineBuf();
 	hdr = buf + 10; // strlen("setheader ");
-	rprintf("Got header.\n");
-//	rprintf("The header is <%s>\n", hdr);
+	rprintf("Got header:\n");
+	rprintf("The header is <%s>\n", hdr);
 	readEDFString(&tmp, hdr, strlen(buf));
 	makeREDFConfig(&current, &tmp);
 	clients[cliInd].headerLen = sizeof(clients[0].headerBuf);
@@ -274,6 +276,7 @@ int makeNewClient(sock_t fd) {
 	clients[myIndex].fd = fd;
 	clients[myIndex].role = Unknown;
 	clients[myIndex].markedForDeletion = 0;
+	clients[myIndex].linePos = 0;
 	clients[myIndex].headerLen = 0;
 	initInputBuffer(&clients[myIndex].ib);
 	initOutputBuffer(&clients[myIndex].ob);
@@ -323,7 +326,14 @@ int main()
 			if (clients[i].markedForDeletion || now > clients[i].lastAlive + TIMEOUT){
 				rprintf("Shutting down client %d\n", i);
 				rshutdown(clients[i].fd);
-				if (i != clientCount - 1)
+				if (clients[i].role == Display) {  // Remove all watchers
+					int j;
+					for (j = 0; j < clientCount; j++) {
+						if (clients[j].role == EEG)
+							clients[j].isDisplaying[i] = 0;
+					}
+				}
+				if (i != clientCount - 1)   // Move clients array down as a chunk
 					memmove((char *) (&clients[i]), (char *) (&clients[i+1]), (clientCount - i - 1)*sizeof(clients[0]));
 				clientCount -= 1;
 			}
@@ -353,21 +363,35 @@ int main()
 			if (!inputBufferEmpty(&clients[i].ib) || FD_ISSET(clients[i].fd, &toread)) {
 				int j;
 				do {
-					j = readline(clients[i].fd, lineBuf, MAXLEN, &clients[i].ib);
+//					rprintf("About to read for client %d and linePos %d\n", i, clients[i].linePos);
+					j = my_read(clients[i].fd, clients[i].lineBuf+clients[i].linePos, MAXLEN - clients[i].linePos, &clients[i].ib);
 					if (isEOF(clients[i].fd, &clients[i].ib)) {
 						clients[i].markedForDeletion = 1;
 						rprintf("Got EOF from client %d\n", i);
 						break;
 					}
-//					rprintf("Got j=%d\n", j);
+					if (j <= 0)
+						continue;
 					if (j > 0) {
-						handleLine(lineBuf, i);
+						char *curPtr, *nlPtr;
+						curPtr = clients[i].lineBuf;
+						clients[i].linePos += j;
+						clients[i].lineBuf[clients[i].linePos] = '\0';
+						while (nlPtr = strchr(curPtr, '\n')) {
+							*nlPtr = '\0';
+							lineBuf = curPtr;
+							handleLine(curPtr, i);
+							curPtr = nlPtr + 1;
+						}
+						memmove(clients[i].lineBuf, curPtr, strlen(curPtr));
+						clients[i].linePos -= curPtr - clients[i].lineBuf;
 						rtime(&clients[i].lastAlive);
 					}
 				} while (!inputBufferEmpty(&clients[i].ib));
-				}
+			}
 		}
 	}
+	
 	return 0;
 }
 

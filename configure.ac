@@ -2,7 +2,7 @@
 AC_INIT(src/nsd.c)
 AC_PROG_CC
 AM_CONFIG_HEADER(src/config.h)
-AM_INIT_AUTOMAKE(NeuroServer, 0.73)
+AM_INIT_AUTOMAKE(NeuroServer, 0.74)
 
 # Checks for programs.
 
