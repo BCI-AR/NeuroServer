@@ -58,11 +58,15 @@ void sendClientMsg(int cliInd, const char *msg)
 //	printf("Tried to send to %d:%s", cliInd, msg);
 //	rprintf("Tried to write %d bytes, got %d retval\n", strlen(msg), retval);
 	if (retval < 0) {
+		rprintf("Got write error... %d\n", retval);
+		clients[cliInd].markedForDeletion = 1;
+#if 0
 #ifdef __MINGW32__
 		int winerr;
 		winerr = WSAGetLastError();
 		if (winerr == WSAENOTCONN)
 			clients[cliInd].markedForDeletion = 1;
+#endif
 #endif
 	}
 	if (retval > 0)
@@ -216,7 +220,7 @@ void cmdDisplay(int cliInd)
 
 void cmdEEG(int cliInd)
 {
-	if (clients[cliInd].role == Unknown && countInRole(EEG) == 0) {
+	if (clients[cliInd].role == Unknown) {
 		clients[cliInd].role = EEG;
 		sendResponseOK(cliInd);
 		return;
@@ -347,6 +351,7 @@ int main()
 		}
 		toerr = toread;
 		retval = rselect(max_fd, &toread, NULL, &toerr);
+//		rprintf("Just selected, with retval %d\n", retval);
 		if (FD_ISSET(sock_fd, &toread)) {
 			int myIndex;
 			rprintf("Accepting from %p\n", sock_fd);

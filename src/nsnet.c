@@ -11,6 +11,38 @@
 #include <signal.h>
 #endif
 
+#define NUM_WRITEN 1
+#define NUM_READN   2
+#define NUM_MYREAD   3
+#define NUM_READLINE   4
+#define NUM_WRITEN2 5
+
+#define NUM_MAX 6
+
+#define NUM_QUIET
+
+unsigned int cur[NUM_MAX], last[NUM_MAX];
+
+void addCount(int where)
+{
+	assert(where >= 0 && where < NUM_MAX);
+	cur[where] += 1;
+}
+
+void showCounts()
+{
+#ifdef NUM_QUIET
+	return;
+#else
+	int i;
+
+	for (i = 0; i < NUM_MAX; ++i)
+		rprintf("%d:%d\t", i, cur[i]);
+	rprintf("\n");
+#endif
+}
+
+
 int isEOF(sock_t con, const struct InputBuffer *ib)
 {
 	return ib->isEOF;
@@ -307,6 +339,8 @@ void initInputBuffer(struct InputBuffer *ib)
 
 int my_read(sock_t fd, char *ptr, size_t maxlen, struct InputBuffer *ib)
 {
+	addCount(NUM_MYREAD);
+	showCounts();
 	//setblocking(fd);
 	//again:
 	if (maxlen == 1) {
@@ -350,7 +384,8 @@ size_t readn(sock_t fd, void *vptr, size_t len, struct InputBuffer *ib)
 	size_t nleft;
 	size_t nread;
 	char *ptr;
-
+	addCount(NUM_READN);
+	showCounts();
 	ptr = vptr;
 	nleft = len;
 	while (nleft > 0) {
@@ -367,19 +402,20 @@ size_t readn(sock_t fd, void *vptr, size_t len, struct InputBuffer *ib)
 
 size_t writen(sock_t fd, const void *vptr, size_t len, struct OutputBuffer *ob)
 {
-	size_t nleft;
-	size_t nwritten;
+	int nleft;
+	int nwritten;
 	const char *ptr;
+	addCount(NUM_WRITEN);
+	showCounts();
 
 	ptr = vptr;
 	nleft = len;
 	while (nleft > 0) {
-		if ( (nwritten = send(fd, ptr, nleft, 0)) <= 0) {
-			if (nwritten < 0)
-				nwritten = 0;
-			else
-				return -1;
-		}
+		addCount(NUM_WRITEN2);
+		showCounts();
+		nwritten = send(fd, ptr, nleft, 0);
+		if (nwritten <= 0)
+			return -1;
 		nleft -= nwritten;
 		ptr += nwritten;
 	}
@@ -391,6 +427,9 @@ int readline(sock_t fd, char *vptr, size_t maxlen, struct InputBuffer *ib)
 	size_t n;
 	int rc;
 	char c, *ptr;
+
+	addCount(NUM_READLINE);
+	showCounts();
 
 	setblocking(fd);
 	ptr = vptr;
