@@ -19,7 +19,6 @@ struct CommandEntry {
 };
 
 struct ClientState {
-	int newLineStarted;
   char *curline;
   int tokenCount;
   char *tokens[MAXTOKENS];
@@ -125,6 +124,10 @@ static void tokenizeLine(struct ClientState *cs)
       continue;
     }
     if (c == '\\') {
+      if (inSpace) {
+        inSpace = 0;
+        startPos = i;
+      }
       inBackslash = 1;
       continue;
     }
@@ -192,5 +195,15 @@ int fetchIntParameters(struct CommandHandler *ch, int *vals, int num)
   for (i = 0; i < num; ++i)
     vals[i] = atoi(ch->curClient->tokens[i+1]);
   return 0;
+}
+
+const char *fetchCommandName(struct CommandHandler *ch)
+{
+  return ch->curClient->tokens[0];
+}
+
+const char *fetchStringParameter(struct CommandHandler *ch, int which)
+{
+  return ch->curClient->tokens[which+1];
 }
 

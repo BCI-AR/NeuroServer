@@ -1,4 +1,5 @@
 #include <neuro/neuro.h>
+#include <string.h>
 #include <assert.h>
 
 void testStringTable(void)
@@ -16,31 +17,55 @@ void testStringTable(void)
   freeStringTable(st);
 }
 
+static const char *gotParm;
+static int gotInt;
+static int gotUnknown;
+
 static void handlePrint(struct CommandHandler *ch, int cliIndex) {
-  int val;
-  fetchIntParameters(ch, &val, 1);
-  printf("Got parameter %d\n", val);
+  gotParm = fetchStringParameter(ch, 0);
+  fetchIntParameters(ch, &gotInt, 1);
 }
 
 static void handleUnknown(struct CommandHandler *ch, int cliIndex) {
-  printf("Unknown command for client %d\n", cliIndex);
+  gotUnknown = 1;
 }
 
 void testCommandHandler(void)
 {
   struct CommandHandler *ch;
+  gotUnknown = 0;
+  gotParm = NULL;
   ch = newCommandHandler();
   newClientStarted(ch, 3);
   handleLine(ch, "what", 3);
   enregisterCommand(ch, "unknown", handleUnknown);
   enregisterCommand(ch, "print", handlePrint);
+  assert(gotUnknown == 0);
   handleLine(ch, "what", 3);
+  assert(gotUnknown == 1);
   handleLine(ch, "print 0", 3);
+  assert(strcmp(gotParm, "0") == 0);
+  assert(gotInt == 0);
+  handleLine(ch, "print \"\"", 3);
+  assert(strcmp(gotParm, "") == 0);
+  assert(gotInt == 0);
+  handleLine(ch, "print \\\"", 3);
+  assert(strcmp(gotParm, "\"") == 0);
+  assert(gotInt == 0);
   handleLine(ch, "print 87", 3);
+  assert(gotInt == 87);
+  assert(strcmp(gotParm, "87") == 0);
+  assert(strcmp(gotParm, "87") == 0);
   handleLine(ch, "print \"45\"", 3);
   handleLine(ch, "print \"48\" ", 3);
   handleLine(ch, "print    \"14\" ", 3);
   handleLine(ch, "print   11  ", 3);
+  handleLine(ch, "print \"hi\"", 3);
+  handleLine(ch, "print \" hi\"", 3);
+  handleLine(ch, "print \"h i\"", 3);
+  handleLine(ch, "print \"hi \"", 3);
+  handleLine(ch, "print \"h\\\\i\"", 3);
+  handleLine(ch, "print \"h\\\"i\"", 3);
   freeCommandHandler(ch);
 }
 

@@ -15,7 +15,15 @@ void enregisterCommand(struct CommandHandler *ch, const char *cmd, void (*func)(
 /* Handles characters using the command handler state machine */
 void handleLine(struct CommandHandler *ch, const char *line, int cliIndex);
 
-/* TODO: fix me, redefine / refactor */
+/* Gets the integer parameters associated with the last line parsed */
+/* This will skip the command name itself.  Fetches num of them */
+/* Returns results in val.  Returns 0 to indicate success */
 int fetchIntParameters(struct CommandHandler *ch, int *vals, int num);
+
+/* Gets just the command name */
+const char *fetchCommandName(struct CommandHandler *ch);
+
+/* Gets a single string parameter */
+const char *fetchStringParameter(struct CommandHandler *ch, int which);
 
 #endif
