@@ -42,6 +42,10 @@ struct NSNetConnectionHandlerInternal {
 
 #define MAXCONN 256
 
+/**
+ * This represents the OS-independent network interface handle.
+ * You should not manipulate any of these fields directly.
+ */
 struct NSNet {
   sock_t max_fd;
   fd_set readfds, writefds, errfds;

@@ -8,7 +8,7 @@ lib_LIBRARIES = libneuro.a
 libneuro_a_HEADERS = neuro/neuro.h neuro/stringtable.h neuro/cmdhandler.h neuro/ns2net.h
 libneuro_adir = $(includedir)/neuro
 
-libneuro_a_SOURCES = stringtable.c cmdhandler.c ns2net.c
+libneuro_a_SOURCES = stringtable.c cmdhandler.c ns2net.c reader.c nsrealloc.c
 
 bin_PROGRAMS = nsd modeegdriver readedf writeedf opencnvdriver writebdf ntest
 
