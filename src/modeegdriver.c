@@ -142,6 +142,8 @@ void handleSamples(int packetCounter, int chan, unsigned short *vals)
 	char buf[MAXLEN];
 	int bufPos = 0;
 	int i;
+	if (chan > current.hdr.dataRecordChannels)
+		chan = current.hdr.dataRecordChannels;
 	bufPos += sprintf(buf+bufPos, "! %d %d", packetCounter, chan);
 	for (i = 0; i < chan; ++i)
 		bufPos += sprintf(buf+bufPos, " %d", vals[i]);
