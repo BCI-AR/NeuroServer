@@ -3,6 +3,8 @@
 
 #include <stdio.h>
 
+#include <nsnet.h>
+
 #define MAXCHANNELS 32
 #define BYTESPERSAMPLE 2
 #define MAXHEADERLEN ((MAXCHANNELS+1) * 256)
@@ -86,6 +88,8 @@ int EDFEncodePacket(char *target, const struct EDFDecodedConfig *cfg);
 
 int writeEDF(int fd, const struct EDFDecodedConfig *cfg);
 int readEDF(int fd, struct EDFDecodedConfig *cfg);
+int writeEDFString(const struct EDFDecodedConfig *cfg, char *buf, int *buflen);
+int readEDFString(struct EDFDecodedConfig *cfg, const char *buf, int len);
 
 int setEDFHeaderBytes(struct EDFDecodedConfig *cfg);
 int getDataRecordChunkSize(const struct EDFDecodedConfig *cfg);
