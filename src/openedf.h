@@ -37,12 +37,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 
 struct EDFPackedHeader {
 	char dataFormat[8];			// identification code
-	char localPatient[80];			// local subject identification [ASCII}
-	char localRecorder[80];			// local recording identification [ASCII}
+	char localPatient[80];			// local subject identification [ASCII]
+	char localRecorder[80];			// local recording identification [ASCII]
 	char recordingStartDate[8];	        // dd.mm.yy local start date of recording [ASCII]
-	char recordingStartTime[8];		// hh.mm.ss local start time of recording [ASCII}
-	char headerRecordBytes[8];		// number of bytes in header record [ASCII}
-	char manufacturerID[44];		// version/data format/manufact. [ASCII}
+	char recordingStartTime[8];		// hh.mm.ss local start time of recording [ASCII]
+	char headerRecordBytes[8];		// number of bytes in header record [ASCII]
+	char manufacturerID[44];		// version/data format/manufact. [ASCII]
 	char dataRecordCount[8];		// number of data records, -1 if unknown
 	char dataRecordSeconds[8];		// duration of a data record in seconds [ASCII] z.B. 1
 	char dataRecordChannels[4];		// number of recording channels in data record

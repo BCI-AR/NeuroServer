@@ -34,7 +34,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 #include <nsnet.h>
 #include <nsutil.h>
 #include <config.h>
-#include "cmdhandler.h"
+#include <neuro/cmdhandler.h>
 #include "nsd.h"
 
 #define MAXEDFCHANNELS 64
@@ -119,11 +119,11 @@ void sendResponseBadRequest(int cliInd)
     go 0 activates a go trial (for event related potentials) in EEG device 0
     
  */
-void cmdgo(int cliInd)
+void cmdgo(struct CommandHandler *ch, int cliInd)
 {
 	if (clients[cliInd].role == Controller) {
 		int who;
-		fetchParameters(&who, 1);
+		fetchIntParameters(ch, &who, 1);
 		if (who >= 0 && who < clientCount && clients[who].role == EEG) {
 		 	rprintf("Sending go command from %d to %d \n", cliInd,who);
 			sendResponseOK(cliInd);
@@ -134,11 +134,11 @@ void cmdgo(int cliInd)
 	sendResponseBadRequest(cliInd);
 }
 
-void cmdnogo(int cliInd)
+void cmdnogo(struct CommandHandler *ch, int cliInd)
 {
 	if (clients[cliInd].role == Controller) {
 		int who;
-		fetchParameters(&who, 1);
+		fetchIntParameters(ch, &who, 1);
 		if (who >= 0 && who < clientCount && clients[who].role == EEG) {
 		 	rprintf("Sending nogo command from %d to %d \n", cliInd,who);
 			sendResponseOK(cliInd);
@@ -152,18 +152,18 @@ void cmdnogo(int cliInd)
 
 
 
-void cmdRole(int cliInd)
+void cmdRole(struct CommandHandler *ch, int cliInd)
 {
 	rprintf("Handling role with cliInd %d\n", cliInd);
 	sendResponseOK(cliInd);
 	sendClientMsgNL(cliInd, stringifyRole(clients[cliInd].role));
 }
 
-void cmdUnwatch(int cliInd)
+void cmdUnwatch(struct CommandHandler *ch, int cliInd)
 {
 	if (clients[cliInd].role == Display) {
 		int who;
-		fetchParameters(&who, 1);
+		fetchIntParameters(ch, &who, 1);
 		if (who >= 0 && who < clientCount && clients[who].role == EEG) {
 			sendResponseOK(cliInd);
 			clients[who].isDisplaying[cliInd] = 0;
@@ -174,11 +174,11 @@ void cmdUnwatch(int cliInd)
 }
 
 
-void cmdWatch(int cliInd)
+void cmdWatch(struct CommandHandler *ch, int cliInd)
 {
 	if (clients[cliInd].role == Display) {
 		int who;
-		fetchParameters(&who, 1);
+		fetchIntParameters(ch, &who, 1);
 		if (who >= 0 && who < clientCount && clients[who].role == EEG) {
 			sendResponseOK(cliInd);
 			clients[who].isDisplaying[cliInd] = 1;
@@ -188,19 +188,19 @@ void cmdWatch(int cliInd)
 	sendResponseBadRequest(cliInd);
 }
 
-void cmdDataFrame(int cliInd)
+void cmdDataFrame(struct CommandHandler *ch, int cliInd)
 {
 	int vals[MAXEDFCHANNELS];
 	int samples[MAXEDFCHANNELS+2];
 	/* vals[0] == pktCounter */
 	/* vals[1] == channelCount */
-	fetchParameters(vals, 2);
+	fetchIntParameters(ch, vals, 2);
 	if (vals[1] > 0 && vals[1] < MAXEDFCHANNELS) {
 		int i;
 		char buf[MAXLEN];
 		int bufPos = 0;
 		// rprintf("Fetching %d parameters\n", vals[1] + 2);
-		fetchParameters(samples, vals[1] + 2);
+		fetchIntParameters(ch, samples, vals[1] + 2);
 		sendResponseOK(cliInd);
 		bufPos += sprintf(buf+bufPos, "! 0");
 		for (i = 0; i < vals[1] + 2; i += 1) {
@@ -221,11 +221,11 @@ void cmdDataFrame(int cliInd)
 		sendResponseBadRequest(cliInd);
 }
 
-void cmdGetHeader(int cliInd)
+void cmdGetHeader(struct CommandHandler *ch, int cliInd)
 {
 	if (clients[cliInd].role == Display) {
 		int who;
-		fetchParameters(&who, 1);
+		fetchIntParameters(ch, &who, 1);
 		if (who >= 0 && who < clientCount && clients[who].role == EEG && clients[who].headerLen) {
 			sendResponseOK(cliInd);
 			sendClientMsgNL(cliInd, clients[who].headerBuf);
@@ -235,7 +235,7 @@ void cmdGetHeader(int cliInd)
 	sendResponseBadRequest(cliInd);
 }
 
-void cmdSetHeader(int cliInd)
+void cmdSetHeader(struct CommandHandler *ch, int cliInd)
 {
 	const char *buf;
 	const char *hdr;
@@ -258,7 +258,7 @@ void cmdSetHeader(int cliInd)
 	sendResponseOK(cliInd);
 }
 
-void cmdStatus(int cliInd)
+void cmdStatus(struct CommandHandler *ch, int cliInd)
 {
 	char buf[16384];
 	int bufPos = 0, i;
@@ -269,13 +269,13 @@ void cmdStatus(int cliInd)
 	sendClientMsg(cliInd, buf);
 }
 
-void cmdClose(int cliInd)
+void cmdClose(struct CommandHandler *ch, int cliInd)
 {
 	sendResponseOK(cliInd);
 	clients[cliInd].markedForDeletion = 1;
 }
 
-void cmdDisplay(int cliInd)
+void cmdDisplay(struct CommandHandler *ch, int cliInd)
 {
 	if (clients[cliInd].role == Unknown) {
 		clients[cliInd].role = Display;
@@ -285,7 +285,7 @@ void cmdDisplay(int cliInd)
 	sendResponseBadRequest(cliInd);
 }
 
-void cmdEEG(int cliInd)
+void cmdEEG(struct CommandHandler *ch, int cliInd)
 {
 	if (clients[cliInd].role == Unknown) {
 		clients[cliInd].role = EEG;
@@ -295,7 +295,7 @@ void cmdEEG(int cliInd)
 	sendResponseBadRequest(cliInd);
 }
 
-void cmdControl(int cliInd)
+void cmdControl(struct CommandHandler *ch, int cliInd)
 {
 	if (clients[cliInd].role == Unknown && countInRole(Controller) == 0) {
 		clients[cliInd].role = Controller;
@@ -305,7 +305,7 @@ void cmdControl(int cliInd)
 	sendResponseBadRequest(cliInd);
 }
 
-void cmdHello(int cliInd)
+void cmdHello(struct CommandHandler *ch, int cliInd)
 {
 	sendResponseOK(cliInd);
 }
@@ -340,7 +340,7 @@ const char *stringifyRole(enum RoleCode role)
 	}
 }
 
-int makeNewClient(sock_t fd) {
+int makeNewClient(struct CommandHandler *ch, sock_t fd) {
 	int myIndex = clientCount;
 	clientCount += 1;
 	memset(&clients[myIndex], 0, sizeof(clients[0]));
@@ -351,34 +351,37 @@ int makeNewClient(sock_t fd) {
 	clients[myIndex].headerLen = 0;
 	initInputBuffer(&clients[myIndex].ib);
 	initOutputBuffer(&clients[myIndex].ob);
-	newClientStarted(myIndex);
+	newClientStarted(ch, myIndex);
 	rtime(&clients[myIndex].lastAlive);
 	return myIndex;
 }
 
 int main()
 {
+  struct CommandHandler *ch;
+
 	int i;
 	sock_t mod_fd;
 	int retval;
 	sock_t sock_fd;
 	fd_set toread, toerr;
+  ch = newCommandHandler();
 	rprintf("NSD (NeuroServer Daemon) v. %s-%s\n", VERSION, OSTYPESTR);
-	enregisterCommand("hello", cmdHello);
-	enregisterCommand("test", cmdHello);
-	enregisterCommand("control", cmdControl);
-	enregisterCommand("display", cmdDisplay);
-	enregisterCommand("close", cmdClose);
-	enregisterCommand("status", cmdStatus);
-	enregisterCommand("role", cmdRole);
-	enregisterCommand("eeg", cmdEEG);
-	enregisterCommand("go", cmdgo);
-	enregisterCommand("nogo", cmdnogo);
-	enregisterCommand("setheader", cmdSetHeader);
-	enregisterCommand("getheader", cmdGetHeader);
-	enregisterCommand("!", cmdDataFrame);
-	enregisterCommand("watch", cmdWatch);
-	enregisterCommand("unwatch", cmdUnwatch);
+	enregisterCommand(ch, "hello", cmdHello);
+	enregisterCommand(ch, "test", cmdHello);
+	enregisterCommand(ch, "control", cmdControl);
+	enregisterCommand(ch, "display", cmdDisplay);
+	enregisterCommand(ch, "close", cmdClose);
+	enregisterCommand(ch, "status", cmdStatus);
+	enregisterCommand(ch, "role", cmdRole);
+	enregisterCommand(ch, "eeg", cmdEEG);
+	enregisterCommand(ch, "go", cmdgo);
+	enregisterCommand(ch, "nogo", cmdnogo);
+	enregisterCommand(ch, "setheader", cmdSetHeader);
+	enregisterCommand(ch, "getheader", cmdGetHeader);
+	enregisterCommand(ch, "!", cmdDataFrame);
+	enregisterCommand(ch, "watch", cmdWatch);
+	enregisterCommand(ch, "unwatch", cmdUnwatch);
 	rinitNetworking();
 	sock_fd = rsocket();
 
@@ -429,7 +432,7 @@ int main()
 			rprintf("Accepting from %p\n", sock_fd);
 			mod_fd = raccept(sock_fd);
 			updateMaxFd(mod_fd);
-			myIndex = makeNewClient(mod_fd);
+			myIndex = makeNewClient(ch, mod_fd);
 			rprintf("Got connection on client %d.\n", myIndex);
 			continue;
 		}
@@ -457,7 +460,7 @@ int main()
 						while ( (nlPtr = strchr(curPtr, '\n')) ) {
 							*nlPtr = '\0';
 							lineBuf = curPtr;
-							handleLine(curPtr, i);
+							handleLine(ch, curPtr, i);
 							curPtr = nlPtr + 1;
 						}
 						memmove(clients[i].lineBuf, curPtr, strlen(curPtr)+1);

@@ -4,5 +4,6 @@
 #define OK 0
 
 #include <neuro/stringtable.h>
+#include <neuro/cmdhandler.h>
 
 #endif

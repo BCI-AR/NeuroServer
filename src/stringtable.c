@@ -30,6 +30,7 @@ struct StringTable *newStringTable(void)
 static int findIndex(struct StringTable *st, const char *key)
 {
   int i;
+  assert(key);
   for (i = 0; i < st->usedSize; i += 1) {
     if (st->tab[i].key == NULL) continue;
     if (strcmp(st->tab[i].key, key) == 0)

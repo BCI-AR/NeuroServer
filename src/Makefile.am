@@ -5,18 +5,19 @@ AM_CPPFLAGS= -I.
 
 lib_LIBRARIES = libneuro.a
 
-libneuro_a_HEADERS = neuro/neuro.h neuro/stringtable.h
+libneuro_a_HEADERS = neuro/neuro.h neuro/stringtable.h neuro/cmdhandler.h
 libneuro_adir = $(includedir)/neuro
 
-libneuro_a_SOURCES = stringtable.c
+libneuro_a_SOURCES = stringtable.c cmdhandler.c
 
-bin_PROGRAMS = nsd modeegdriver readedf writeedf opencnvdriver writebdf neurotest
+bin_PROGRAMS = nsd modeegdriver readedf writeedf opencnvdriver writebdf ntest
 
-neurotest_SOURCES = neurotest.c
-neurotest_LDADD = libneuro.a
+ntest_SOURCES = ntest.c
+ntest_LDADD = libneuro.a
 
-nsd_SOURCES = nsd.c nsutil.c nsnet.c monitor.c monitor.h cmdhandler.c \
-openedf.c config.h cmdhandler.h edfmacros.h nsd.h nsnet.h nsutil.h openedf.h pctimer.h
+nsd_SOURCES = nsd.c nsutil.c nsnet.c monitor.c monitor.h \
+openedf.c config.h edfmacros.h nsd.h nsnet.h nsutil.h openedf.h pctimer.h
+nsd_LDADD = libneuro.a
 
 modeegdriver_SOURCES = modeegdriver.c nsser.c nsutil.c openedf.c \
 nsnet.c monitor.c monitor.h \
