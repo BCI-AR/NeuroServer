@@ -1,3 +1,12 @@
+/** \file
+ * \author Rudi Cilibrasi
+ *
+ * Device driver for the modularEEG from the OpenEEG project.
+ *
+ * So far protocols P2 and P3 are supported.  
+ * 
+ */
+
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>
@@ -7,10 +16,9 @@
 #include <nsser.h>
 #include <openedf.h>
 #include <config.h>
-
-/* This is the maximum size of a protocol packet */
+/// maximum size of a protocol packet 
 #define PROTOWINDOW 24
-
+/// maximum size of a serial data packet
 #define MAXPACKETSIZE 17
 
 char buf[PROTOWINDOW];
@@ -26,6 +34,7 @@ int isValidPacket(unsigned short nchan, unsigned short *samples);
 int doesMatchP3(unsigned char c, unsigned short *vals,int *nsamples);
 int doesMatchP2(unsigned char c, unsigned short *vals,int *nsamples);
 int mGetOK(sock_t fd, struct InputBuffer *ib);
+
 
 int mGetOK(sock_t fd, struct InputBuffer *ib)
 {

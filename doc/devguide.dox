@@ -1,0 +1,113 @@
+/**
+\page devguide NeuroServer Developer Guide
+\author Rudi Cilibrasi (cilibrar@ofb.net)
+
+This program uses GNU autoconf/automake.
+
+To regenerate configuration scripts, do this:
+\code
+aclocal ; autoconf ; automake -a
+\endcode
+then configure with
+\code
+./configure
+\endcode
+to regenerate the Makefile's.
+
+To create a package, use the command
+\code
+make dist
+\endcode
+MinGW / MSYS specific instructions:
+In order to build under MinGW/MSYS, use commands like the following:
+First, use the three commands listed above on a Linux machine to
+generate an "configure" script, or download a prepackaged
+neuroserver distribution.
+\code
+./configure
+\endcode
+then go into src/
+\code
+cd src
+make -f Makefile.mingw
+\endcode
+If this builds fine then you can try the sampleClient
+\code
+cd ../sampleclient
+make -f Makefile.mingw
+\endcode
+
+Note that these Makefile's assume you have the following installed:
+
+MinGW
+
+MSYS
+
+Dropline GTK binaries in default install location: C:/Dev-C++/
+(you can get these from http://www.dropline.net/gtk/)
+
+\section cross Cross-compiling for Windows under Linux specific instructions
+
+In order to build the Windows setup executable under linux, you will
+need to install WINE, the Windows Emulator.
+\code
+apt-get install wine
+\endcode
+Next, you need to copy these files from an Inno Setup 4 installation to
+your virtual C: drive, e.g.
+Make these directories:
+\code
+/home/cilibrar/.wine/c
+/home/cilibrar/.wine/c/windows
+/home/cilibrar/.wine/c/windows/system
+\endcode
+And then copy these from your InnoSetup directory:
+\code
+/home/cilibrar/.wine/c/windows/system/Default.isl
+/home/cilibrar/.wine/c/windows/system/ISCmplr.dll
+/home/cilibrar/.wine/c/windows/system/ISCmplr.dls
+/home/cilibrar/.wine/c/windows/system/RegSvr.e32
+/home/cilibrar/.wine/c/windows/system/Setup.e32
+/home/cilibrar/.wine/c/windows/system/SetupLdr.e32
+/home/cilibrar/.wine/c/windows/system/Uninst.e32
+/home/cilibrar/.wine/c/windows/system/WizModernImage.bmp
+/home/cilibrar/.wine/c/windows/system/WizModernImage2.bmp
+/home/cilibrar/.wine/c/windows/system/WizModernSmallImage.bmp
+/home/cilibrar/.wine/c/windows/system/WizModernSmallImage2.bmp
+/home/cilibrar/.wine/c/windows/system/isbunzip.dll
+/home/cilibrar/.wine/c/windows/system/isbzip.dll
+/home/cilibrar/.wine/c/windows/system/islzma.dll
+(you may just copy *.dll *.dls *.isl *.e32 *.bmp)
+\endcode
+This file will be created for you automatically by wine:
+\code
+/home/cilibrar/.wine/c/windows/win.ini
+\endcode
+
+Then just copy your .iss file to somewhere on your virtual C drive.
+After that, you should be able to run
+\code
+wineconsole ISCC.exe <filename.iss>
+\endcode
+from a script.
+
+If you for some reason don't have X windows installed or don't want to
+install it, unfortunately wineconsole still requires your DISPLAY
+environment variable to be set, and makes a useless connection to some
+X server.  The best way to mitigate this deficiency is by installing
+Xvfb, the X virtual frame buffer:
+\code
+apt-get install xvfb xfonts-base
+\endcode
+Then start your Xvfb with something like:
+\code
+Xvfb :0 -screen 0 1600x1200x32
+\endcode
+Then in your other shell you should be able to:
+\code
+export DISPLAY=localhost:0.0
+\endcode
+
+This will then allow your script to use wineconsole as above.
+
+*/

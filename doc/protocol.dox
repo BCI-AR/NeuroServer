@@ -1,0 +1,132 @@
+/**
+\page protocol The NeuroServer protocol as implemented by nsd
+\author Rudi Cilibrasi (cilibrar@ofb.net)
+
+The NeuroServer is a network infrastructure to support a constellation of
+data collection, visualization, and feedback devices oriented towards
+EEG data.  The EEG data is sent in an EDF-oriented format, which has
+already been well specified in, for instance,
+<a href=http://www.hsr.nl/edf/edf_spec.htm>here.</a>
+
+(n.b. in this document, \\n denotes a newline character)
+
+The nsd protocol is TCP-based and line-oriented.  By default, the nsd server
+binds to all network addresses and accepts connections on port 8336.  The
+nsd prints no welcome banner when new clients connect.  All
+commands are a single line of text.  For any command, the server
+first returns a line indicating general success or failure:
+\verbatim
+200 OK
+\endverbatim
+is for successful commands, and any other code should be assumed an error.
+At this point, the only error code is
+\verbatim
+400 BAD REQUEST
+\endverbatim
+After the success/failure code, some commands will produce additional
+output.  This output is generally a single line.
+
+Every client that is connected has a current "role" status.  Initially,
+it is set to "Unknown."  There are three other roles that may be
+assumed, with three different commands:
+
+-display       to enter Display role
+-eeg           to enter EEG role
+-control       to enter Controller role
+
+In order for a client to determine its current role, it can use the
+\verbatim
+role          to print out the current role for this client
+\endverbatim
+Another important command available to all roles is
+\verbatim
+status        to print a table showing the client id numbers and roles for all
+\endverbatim
+For example, if you do
+\verbatim
+display
+status
+\endverbatim
+You will get from the nsd:
+\verbatim
+200 OK
+200 OK
+1 clients connected
+0:Display
+\endverbatim
+For EEG role devices, these are useful:
+\verbatim
+setheader <EDFHeaderPacket>\n
+\endverbatim
+For example,
+\verbatim
+setheader 0                                                                                                                                                                       26.01.0418.36.01768     NEUROSD                                     -1      1       2   Elec 00         Elec 01         Active Electrode                                                                Active Electrode                                                                uV      uV      0       0       1023    1023    0       0       1023    1023    HP: DC; LP:  49 Hz                                                              HP: DC; LP:  49 Hz                                                              2048    2048    Reserved                        Reserved                        \n
+\endverbatim
+Would use a 2048-Hz sampling rate dual-channel format, which ranges from
+0 to 1023 in each channel.
+
+Another option for EEG's alone is the data frame command, spelled '!':
+\verbatim
+! <packetCounter> <channelCount> <sample[0]> <sample[1]> ... \n
+\endverbatim
+For instance,
+\verbatim
+! 45 2 123 125
+\endverbatim
+Means a sample frame with 2 channels and packet counter 45, with
+two data channels: 123 is sampled from one, and 125 from the other.
+
+In order to view data, a Display role must be used.  A Display can
+use the watch, unwatch, and getheader commands.
+\verbatim
+watch <clientIndex>
+\endverbatim
+You can find the correct client index by using the status command.
+Usually, the EEG device is the first client to connect, so it will
+be numbered 0.  Therefore, the command
+\verbatim
+watch 0\n
+\endverbatim
+will be sufficient for simple single-source compatibility.  The opposite
+command is called
+\verbatim
+unwatch <clientIndex>
+\endverbatim
+The "watch" flag toggles whether or not this client receives samples
+originating from a particular EEG client.  A Display may watch none,
+one, or many different EEG clients.
+
+In order to get the sampling and other header information, the command
+\verbatim
+getheader <clientIndex>
+\endverbatim
+can be used.  It will write the entire header followed by a line ending.
+Here again,
+\verbatim
+getheader 0\n
+\endverbatim
+can be used for basic testing.
+
+If a Display is watching an EEG, it will receive special messages
+whenever a new data frame comes.  These messages will be single lines
+of the form:
+\verbatim
+! <clientIndex> <packetCounter> <channelCount> <sample[0]> <sample[1]> ... \r\n
+\endverbatim
+A Display must be ready to accept these interspersed with any other
+command results at any time.
+
+This entire protocol is implemented in the "nsd" NeuroServer component,
+and parts are used by every NeuroServer compatible application.  Example
+protocol traces are shown in the tests/common.rb source file.
+
+
+
+\section ackprot Acknowledgements
+
+Helpful comments from the openeeg-software-dev list, particularly
+Jim Peters, whose concrete suggestions have helped shape this protocol.
+
+*/
+
+

@@ -1,0 +1,78 @@
+/*! \mainpage Neuroserver Documentation
+  
+  \section intro Introduction
+ 
+  An open-source multi-platform EEG signal transceiver using TCP/IP and
+  EDF format. The protocol used is described in \ref protocol. Developers
+  should also read the \ref devguide and \ref packeterrors.
+ 
+  \section req Requirements
+ 
+  For Windows users, just download the self-extracting binary available here:
+  <a href="..\..\doc\www\NeuroServer-0.7.4-win.exe">NeuroServer-0.7.4-win.exe</a>
+  Linux users can download the source archive:
+  <a href="..\..\doc\www\NeuroServer-0.7.4.tar.gz">NeuroServer-0.7.4.tar.gz</a>
+ 
+  To build, type
+\verbatim
+ ./configure 
+  make
+  make install
+\endverbatim
+ 
+  To start, first turn on your ModEEG.  Then, start
+\verbatim 
+  nsd
+\endverbatim
+  
+  which can be run from command-line or from your menu option:
+  Start Menu | Programs | NeuroServer | NSD
+ 
+  NSD is the NeuroServer Daemon that must be running to enable network access.
+  The next step is to start the hardware driver:
+\verbatim 
+  modeegdriver
+\endverbatim
+ 
+  If your ModEEG is not connected to COM1:, then use the -d
+  syntax:
+\verbatim 
+ modeegdriver -d COM2
+\endverbatim
+ 
+  This is also available in
+  Start Menu | Programs | NeuroServer | MODEEGDRIVER
+  in another window.
+ 
+  Now that you have both of these running, clients are ready to be connected.
+  At this point, you are ready to try BioPro, BrainBay, or EEGMIR by
+  connecting
+  to the server running on your localhost at port 8336 by default.  This
+  system also allows you to save EEG data to a file using the writeedf.exe
+  command.  You must run writeedf from a command-line, and must provide a
+  filename such as
+\verbatim 
+ writeedf eegdata.edf
+\endverbatim
+ 
+  Similarly, to play back your
+  data, use the
+\verbatim 
+  readedf eegdata.edf
+\endverbatim
+ 
+  command instead of starting your
+  modeegdriver.  In this way, you can review the same data under several
+  different applications and parameters.  To get a summary of parameters,
+  enter either of these commands with no parameters.
+ 
+  \section devreq Developer Requirements
+ 
+  For Windows users, you must install <a href="http://www.mingw.org/">MinGW and
+  MSYS.</a>  The versions that I test with are
+  <a href="http://prdownloads.sf.net/mingw/MinGW-3.1.0-1.exe?download">MinGW-3.1.0-1.exe</a>
+  and <a href="http://prdownloads.sf.net/mingw/MSYS-1.0.10.exe?download">MSYS-1.0.10.exe</a>.
+  Once you have these two installed, you can build the executable under
+  windows.
+ 
+ */
