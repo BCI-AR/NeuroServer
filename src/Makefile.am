@@ -5,10 +5,10 @@ AM_CPPFLAGS= -I.
 
 lib_LIBRARIES = libneuro.a
 
-libneuro_a_HEADERS = neuro/neuro.h neuro/stringtable.h neuro/cmdhandler.h
+libneuro_a_HEADERS = neuro/neuro.h neuro/stringtable.h neuro/cmdhandler.h neuro/ns2net.h
 libneuro_adir = $(includedir)/neuro
 
-libneuro_a_SOURCES = stringtable.c cmdhandler.c
+libneuro_a_SOURCES = stringtable.c cmdhandler.c ns2net.c
 
 bin_PROGRAMS = nsd modeegdriver readedf writeedf opencnvdriver writebdf ntest
 

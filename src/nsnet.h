@@ -33,13 +33,15 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 #define DEFAULTHOST "localhost"
 #define MAXCLIENTS 16
 
-#ifdef __MINGW32__
-#include <winsock2.h>
-#define sock_t SOCKET
-#include <sys/types.h>
-#define rsockaddr_t SOCKADDR_IN
-#define hostent_t LPHOSTENT
-#else
+//#if defined(__MINGW32__) || defined(__CYGWIN__)
+//#include <winsock2.h>
+//#define sock_t SOCKET
+//#include <sys/types.h>
+//#define sock_t int
+//#define rsockaddr_t struct sockaddr_in
+//#define rsockaddr_t SOCKADDR_IN
+//#define hostent_t LPHOSTENT
+//#else
 #include <sys/types.h>
 #include <errno.h>
 #include <sys/socket.h>
@@ -49,7 +51,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 typedef struct hostent *hostent_t;
 #define sock_t int
 #define rsockaddr_t struct sockaddr_in
-#endif
+//#endif
 
 struct InputBuffer {
 	int read_cnt;

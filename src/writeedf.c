@@ -214,7 +214,7 @@ int main(int argc, char **argv)
 	if (isEOF(sock_fd, &ib))
 		serverDied();
 	EDFLen = readline(sock_fd, EDFPacket, sizeof(EDFPacket), &ib);
-	rprintf("Got EDF Header <%s>\n", EDFPacket);
+	rprintf("Got EDF Header <%s>, of size %d\n", EDFPacket, EDFLen);
 	fwrite(EDFPacket, 1, EDFLen, fp);
 	fclose(fp);
 	readEDFString(&cfg, EDFPacket, EDFLen);
@@ -223,40 +223,42 @@ int main(int argc, char **argv)
 	writeString(sock_fd, cmdbuf, &ob);
 	getOK(sock_fd, &ib);
 	t0 = pctimer();
-	for (;;) {
-		for (;;) {
-			char *cur;
-			int vals[MAXCHANNELS + 5];
-			int curParam = 0;
-			int devNum, packetCounter=0, channels=0, *samples;
-			FD_ZERO(&toread);
-			FD_SET(sock_fd, &toread);
-			rselect(sock_fd+1, &toread, NULL, NULL);
-			linePos = readline(sock_fd, lineBuf, sizeof(EDFPacket), &ib);
-			if (isEOF(sock_fd, &ib))
-				break;
-			if (linePos < MINLINELENGTH)
-				continue;
-			if (lineBuf[0] != '!')
-				continue;
-			for (cur = strtok(lineBuf, DELIMS); cur ; cur = strtok(NULL, DELIMS)) {
-				if (isANumber(cur))
-					vals[curParam++] = atoi(cur);
-			}
-			// <devicenum> <packetcounter> <channels> data0 data1 data2 ...
-			if (curParam < 3)
-				continue;
-			devNum = vals[0];
-			packetCounter = vals[1];
-			channels = vals[2];
-			samples = vals + 3;
-			handleSamples(packetCounter, channels, samples);
+  for (;;) {
+    char *cur;
+    int vals[MAXCHANNELS + 5];
+    int curParam = 0;
+    int devNum, packetCounter=0, channels=0, *samples;
+    FD_ZERO(&toread);
+    FD_SET(sock_fd, &toread);
+    rselect(sock_fd+1, &toread, NULL, NULL);
+    linePos = readline(sock_fd, lineBuf, sizeof(EDFPacket), &ib);
+    if (isEOF(sock_fd, &ib))
+      break;
+    if (opts.isLimittedTime && pctimer() > t0 + opts.seconds)
+      break;
+    if (linePos < MINLINELENGTH) {
+      rsleep(20);
+      continue;
+    }
+    if (lineBuf[0] != '!')
+      continue;
+    for (cur = strtok(lineBuf, DELIMS); cur ; cur = strtok(NULL, DELIMS)) {
+      if (isANumber(cur))
+        vals[curParam++] = atoi(cur);
+    }
+    // <devicenum> <packetcounter> <channels> data0 data1 data2 ...
+    if (curParam < 3)
+      continue;
+    devNum = vals[0];
+    packetCounter = vals[1];
+    channels = vals[2];
+    samples = vals + 3;
+    handleSamples(packetCounter, channels, samples);
 //				for (i = 0; i < channels; ++i) {
 //					rprintf(" %d", samples[i]);
 //				}
-		}
-		rsleep(20);
-	}
-	fclose(fp);
+  }
+	writeString(sock_fd, "close\n", &ob);
+	getOK(sock_fd, &ib);
 	return 0;
 }

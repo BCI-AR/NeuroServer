@@ -37,7 +37,7 @@ void updateMaxFd(int fd);
 void rtime(time_t *t);
 void rsleep(int ms);
 
-#ifdef __MINGW32__
+#if defined(__MINGW32__) || defined(__CYGWIN__)
 #define OSTYPESTR "Windows"
 #else
 #define OSTYPESTR "Linux"

@@ -3,28 +3,28 @@
 
 /*
 NeuroServer
- 
+
 A collection of programs to translate between EEG data and TCP network
 messages. This is a part of the OpenEEG project, see http://openeeg.sf.net
 for details.
-    
+
 Copyright (C) 2003, 2004 Rudi Cilibrasi (cilibrar@ofb.net)
-     
+
 This library is free software; you can redistribute it and/or
 modify it under the terms of the GNU Lesser General Public
 License as published by the Free Software Foundation; either
 version 2.1 of the License, or (at your option) any later version.
-         
+
 This library is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 Lesser General Public License for more details.
-             
+
 You should have received a copy of the GNU Lesser General Public
 License along with this library; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 */
-                
+
 
 
 #include <stdio.h>
@@ -48,7 +48,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 
 #define NUM_MAX 6
 
-/// output of debugging information (if not defined)
+// output of debugging information (if not defined)
 #define NUM_QUIET
 
 unsigned int cur[NUM_MAX], last[NUM_MAX];
@@ -81,7 +81,7 @@ int isEOF(sock_t con, const struct InputBuffer *ib)
 const char *stringifyErrorCode(int code)
 {
 	static char buf[80];
-#ifdef __MINGW32__
+#if 0 && (defined(__MINGW32__) || defined(__CYGWIN__))
 	switch (code) {
 		case WSAECONNRESET:
 			return "WSAECONNRESET";
@@ -116,14 +116,14 @@ const char *stringifyErrorCode(int code)
 			break;
 	}
 #else
-	sprintf(buf, "<unknown unix:%d>", code);
+	sprintf(buf, "<unknown %s:%d>", OSTYPESTR, code);
 	return buf;
 #endif
 }
 
 void rshutdown(sock_t fd)
 {
-#ifdef __MINGW32__
+#if 0 && (defined(__MINGW32__) || defined(__CYGWIN__))
 	shutdown(fd, SD_BOTH);
 #else
 	shutdown(fd, SHUT_RDWR);
@@ -133,7 +133,7 @@ void rshutdown(sock_t fd)
 void setblocking(sock_t sock_fd)
 {
 	int retval;
-#ifdef __MINGW32__
+#if 0 && (defined(__MINGW32__) || defined(__CYGWIN__))
 	do {
 		u_long val;
 		val = 0;
@@ -150,17 +150,17 @@ void setblocking(sock_t sock_fd)
 		int flags;
 		flags = fcntl(sock_fd, F_GETFL, 0);
 		retval = fcntl(sock_fd, F_SETFL, flags & (~O_NONBLOCK));
-		if (retval != 0) {
-			rprintf("Error clearing O_NONBLOCK\n");
-			rexit(1);
-		}
+//		if (retval != 0) {
+//			rprintf("Error clearing O_NONBLOCK\n");
+//			rexit(1);
+//		}
 	} while (0);
 #endif
 }
 void setnonblocking(sock_t sock_fd)
 {
 	int retval;
-#ifdef __MINGW32__
+#if 0 && (defined(__MINGW32__) || defined(__CYGWIN__))
 	do {
 		u_long val;
 		val = 1;
@@ -190,7 +190,7 @@ sock_t rsocket(void) {
 	return sock_fd;
 }
 
-#ifndef __MINGW32__
+#if 1 || (!defined(__MINGW32__) && !defined(__CYGWIN__))
 void sigPIPEHandler(int i) {
 }
 #endif
@@ -199,7 +199,7 @@ int rinitNetworking(void) {
 	static int mustInit = 1;
 	if (mustInit) {
 		mustInit = 0;
-#ifdef __MINGW32__
+#if 0 && (defined(__MINGW32__) || defined(__CYGWIN__))
 	WSADATA wsadata;
 	WSAStartup(MAKEWORD(2,0), &wsadata);
 	WSASetLastError(0);
@@ -244,7 +244,7 @@ int rbindAll(sock_t sock_fd)
 int rconnectName(sock_t sock_fd, const char *hostname, unsigned short portno)
 {
 	int retval;
-#ifdef __MINGW32__
+#if 0 && (defined(__MINGW32__) || defined(__CYGWIN__))
 	int winerr;
 #endif
 	rsockaddr_t local;
@@ -257,7 +257,7 @@ int rconnectName(sock_t sock_fd, const char *hostname, unsigned short portno)
 	}
 	local.sin_family = AF_INET;
 	local.sin_port = htons(portno);
-#ifdef __MINGW32__
+#if 0 && (defined(__MINGW32__) || defined(__CYGWIN__))
 	local.sin_addr = *((LPIN_ADDR)*host->h_addr_list);
 #else
 	local.sin_addr = *((struct in_addr *)host->h_addr);
@@ -265,29 +265,26 @@ int rconnectName(sock_t sock_fd, const char *hostname, unsigned short portno)
 
 	rprintf("Connecting to %s at %s:%d\n", hostname, inet_ntoa(local.sin_addr), portno);
 
-	do {
+  while (1) {
 		retval = connect(sock_fd, (struct sockaddr *) &local, sizeof(local));
-#ifdef __MINGW32__
-		winerr = WSAGetLastError();
-		if (retval == SOCKET_ERROR && winerr == WSAEISCONN)
-			retval = 0;
-		if (retval == SOCKET_ERROR)
-			monitorLog(PLACE_CONNECT, winerr);
-	} while (retval == SOCKET_ERROR);
-#else
-		if (retval != 0 && errno != EINPROGRESS) {
-			perror("connect");
-			exit(1);
-		}
+    if (retval != 0) {
+      if (errno == EISCONN)
+        return 0;
+      else {
+        if (errno == EINPROGRESS) {
+          rsleep(5);
+          continue;
+        }
+        perror("moreconnect");
+      }
+    }
 		monitorLog(PLACE_CONNECT, errno);
-	} while (retval == -1 && errno == EINPROGRESS);
-#endif
-	return retval;
+	}
 }
 
 sock_t raccept(sock_t sock_fd)
 {
-#ifdef __MINGW32__
+#if 0 && (defined(__MINGW32__) || defined(__CYGWIN__))
 	int winerr;
 #endif
 	rsockaddr_t modaddr;
@@ -297,7 +294,7 @@ sock_t raccept(sock_t sock_fd)
 
 	do {
 		retval = accept(sock_fd, (struct sockaddr *) &modaddr, &modaddrsize);
-#ifdef __MINGW32__
+#if 0 && (defined(__MINGW32__) || defined(__CYGWIN__))
 		if (retval == SOCKET_ERROR) {
 			winerr = WSAGetLastError();
 			rprintf("Got error code %s\n", stringifyErrorCode(winerr));
@@ -319,7 +316,7 @@ int rrecv(sock_t fd, char *read_buf, size_t count)
 {
 	int retval = -1;
 	retval = recv(fd, read_buf, count, 0);
-#ifdef __MINGW32__
+#if 0 && (defined(__MINGW32__) || defined(__CYGWIN__))
 	int winerr;
 	if (retval == SOCKET_ERROR) {
 		winerr = WSAGetLastError();
@@ -346,7 +343,7 @@ int writeBytes(sock_t con, const char *buf, int size, struct OutputBuffer *ob)
 	setnonblocking(con);
 	if (retval != size) {
 		rprintf("send error: %d\n", retval);
-#ifdef __MINGW32__
+#if 0 && (defined(__MINGW32__) || defined(__CYGWIN__))
 		do {
 			int winerr;
 			winerr = WSAGetLastError();
@@ -378,7 +375,7 @@ int my_read(sock_t fd, char *ptr, size_t maxlen, struct InputBuffer *ib)
 	}
 	if (ib->read_cnt <= 0) {
 			if ( (ib->read_cnt = rrecv(fd, ib->read_buf, maxlen)) < 0) {
-#ifdef __MINGW32__
+#if 0 && (defined(__MINGW32__) || defined(__CYGWIN__))
 				int winerr;
 				winerr = WSAGetLastError();
 				if (winerr != WSAEWOULDBLOCK)
@@ -395,7 +392,7 @@ int my_read(sock_t fd, char *ptr, size_t maxlen, struct InputBuffer *ib)
 				return -1;
 			} else {
 				if (ib->read_cnt == 0) {
-#ifdef __MINGW32__
+#if defined(__MINGW32__) || defined(__CYGWIN__)
 					ib->isEOF = 1;
 #endif
 					return 0;
@@ -517,7 +514,7 @@ int rselect(sock_t max_fd, fd_set *toread, fd_set *towrite, fd_set *toerr)
 	int retval;
 
 	retval = rselect_real(max_fd, toread, towrite, toerr, NULL);
-#ifdef __MINGW32__
+#if 0 && (defined(__MINGW32__) || defined(__CYGWIN__))
 	if (retval == SOCKET_ERROR) {
 		int winerr;
 		winerr = WSAGetLastError();
@@ -638,4 +635,3 @@ int handleReads(sock_t fd)
 	}
 	return 0;
 }
-
