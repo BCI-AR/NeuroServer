@@ -52,7 +52,8 @@ const char *getLineBuf(void)
 
 void sendClientMsg(int cliInd, const char *msg)
 {
-	int retval = writen(clients[cliInd].fd, msg, strlen(msg), &clients[cliInd].ob);
+	int retval = writen(clients[cliInd].fd, msg,strlen(msg), &clients[cliInd].ob);
+//	printf("Tried to send to %d:%s", cliInd, msg);
 //	rprintf("Tried to write %d bytes, got %d retval\n", strlen(msg), retval);
 	if (retval < 0) {
 #ifdef __MINGW32__
@@ -323,7 +324,7 @@ int main()
 				rprintf("Shutting down client %d\n", i);
 				rshutdown(clients[i].fd);
 				if (i != clientCount - 1)
-					memmove((char *) (&clients[i]), (char *) (&clients[i+1]), clientCount - i - 1);
+					memmove((char *) (&clients[i]), (char *) (&clients[i+1]), (clientCount - i - 1)*sizeof(clients[0]));
 				clientCount -= 1;
 			}
 			else

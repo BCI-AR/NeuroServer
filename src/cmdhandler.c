@@ -44,7 +44,7 @@ void handleLine(const char *line, int cliIndex)
 //	rprintf("Handling line: <%s> (cmd:(%s)) from %d\n", line, cmd, cliIndex);
 	for (i = 0; i < commandCount; ++i) {
 		if (strcmp(commands[i].cmd, cmd) == 0) {
-//			rprintf("Executing command %s\n", cmd);
+//			rprintf("Executing command for %d: %s\n", cliIndex, cmd);
 			commands[i].func(cliIndex);
 			break;
 		}

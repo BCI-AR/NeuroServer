@@ -80,8 +80,10 @@ def getOK()
 end
 
 def sendCommand(str)
-	@con.puts str
-	@history << [str]
+	cmdstr = "#{str}\n"
+	retval = @con.send(cmdstr, 0)
+	puts "SEND:#{retval.to_s}:#{str}" if @verbose
+	@history << ["#{retval.to_s}:#{str}"]
 	print format("%-20s", str) if (@verbose)
 end
 
@@ -177,8 +179,7 @@ def doTest05()
 	@con = displayCon
 	shouldBe("! 0 0 2 15 41")
 	sendCommand("close")
-# TODO: Figure out why this response is not coming in
-#	getOK()
+	getOK()
 	finishedTest()
 end
 
