@@ -1,8 +1,18 @@
 #include <neuro/stringtable.h>
 #include <assert.h>
 #include <malloc.h>
-#include <search.h>
 #include <string.h>
+
+/* To get tdestroy prototype */
+
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+#ifndef __USE_GNU
+#define __USE_GNU
+#endif
+
+#include <search.h>
 
 struct StringTableNode {
   char *key;
@@ -37,8 +47,10 @@ int putString(struct StringTable *st, const char *key, void *val)
     result->val = val;
     tsearch(result, &st->stringTableNodeTab, compare);
   }
-  else
+  else {
+    result = * (struct StringTableNode **) result;
     result->val = val;
+  }
   return 0;
 }
 
@@ -49,9 +61,11 @@ int delString(struct StringTable *st, const char *key)
   result = (struct StringTableNode *)
            tfind(&key, &st->stringTableNodeTab, compare);
   if (result == NULL) return ERR_NOSTRING;
+  result = * (struct StringTableNode **) result;
   toFree = result->key;
-  tdelete(&key, &st->stringTableNodeTab, compare);
+  tdelete(result, &st->stringTableNodeTab, compare);
   free(toFree);
+  free(result);
   return 0;
 }
 

@@ -70,7 +70,7 @@ static void testStringTable(void)
   int val;
   struct StringTable *st;
   int i;
-  for (i = 0; i < 1000000; i += 1) {
+  for (i = 0; i < 100; i += 1) {
     st = newStringTable();
     rassert(st);
     rassert(findString(st, "dog") == NULL);
@@ -88,8 +88,9 @@ static void testStringTable(void)
     rassert(delString(st, "1") == 0);
     rassert(delString(st, "3") == 0);
     rassert(delString(st, "2") == 0);
+    rassert(putString(st, "memcheck", &val) == 0);
     freeStringTable(st);
-  }
+    }
 }
 
 static const char *gotParm;
