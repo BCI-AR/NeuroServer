@@ -35,3 +35,4 @@ Note that these Makefile's assume you have the following installed:
 MinGW
 MSYS
 Dropline GTK binaries in default install location: C:/Dev-C++/
+(you can get these from http://www.dropline.net/gtk/)
