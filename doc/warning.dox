@@ -1,0 +1,152 @@
+/** 
+\page warning IMPORTANT WARNING
+
+If you choose to use the OpenEEG project hardware and/or software to
+do neurofeedback training or experimentation on yourself or others,
+you do so ENTIRELY AT YOUR OWN RISK.
+
+The software and hardware designs are distributed in the hope that
+they will be useful, but WITHOUT ANY WARRANTY; without even the
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+PURPOSE.
+
+Whilst our aim is to create a genuinely useful and safe set of tools
+for neurofeedback training and experimentation, it is quite possible
+that our software, hardware or its accompanying documentation contain
+bugs or mistakes which its authors cannot be held responsible for.
+
+Please bear in mind that we are a loosely knit group of experimenters
+and enthusiasts from all over the world, and many of us have no formal
+training or qualifications in the field of neurofeedback.  It is up to
+you to assess the risks you are taking by using our work.
+
+
+\section devicerisks EEG DEVICE RISKS
+
+The most important aspect of device safety is to maintain an electrical
+isolation barrier between a user connected to an EEG device, and the
+device (typically a computer) to which the EEG device is connected.
+
+All of the openEEG devices have been designed with the intention of
+providing this electrical isolation barrier.
+
+However, if there is an isolation failure in the EEG unit due to an
+accident, or faulty design, or faulty parts, or faulty construction, and
+the EEG subject touches a live mains voltage in their environment, the
+mains voltage will take the shortest route to earth, which is through the
+subject's body.  This electric shock passing through the head is likely
+to have severe consequences.
+
+There are a number of objects in the environment which may carry a mains
+voltage if faulty.  If the isolation in your EEG device has failed, these
+objects will deliver an incredibly dangerous shock through your brain if
+they are carrying a mains voltage at the time they are touched.  So, as a
+precaution for your own safety, it is best to avoid touching these objects
+even if you are sure that the isolation in your EEG device is good.
+
+Potentially dangerous objects to touch while connected to an EEG device
+include, but are not limited to:
+ 
+- Your PC
+- Appliances such as refrigerators or electric tea kettles.
+- Other electronic devices such as TVs (TV antenna outlets included)
+- Light switches, mains power points and adaptors, etc
+- Objects connected to earth, such as radiators or kitchen sinks.
+ 
+In short, consider anything connected to mains power and/or earth off
+limits when you are wearing electrodes.
+
+Electric shock can also be caused by the EEG device itself, if the
+electrode connections somehow become connected to the internal power
+rails. The voltages are low, but that is no guarantee for safety.
+ 
+It is important to take care when building the EEG unit to make sure that
+the isolation is not compromised, in order to protect from these
+eventualities, however unlikely they may seem.
+
+Finally, you should never use an EEG device during a lightning storm or
+whenever the electrical power grid is unstable.
+
+
+\section devicedisclaimer EEG DEVICE DISCLAIMER
+ 
+IEC601 is a standard that specifies tests and requirements that medical
+devices must pass before they can be used on humans.
+ 
+However, none of the devices built from these designs have been tested
+according to these guidelines because of the costs involved.
+ 
+Therefore, a device based on any of these designs may not be used for
+medical purposes as no medical claims are made.  Note that CONNECTING A
+DEVICE VIA ELECTRODES TO HUMANS OR ANIMALS IS POTENTIALLY HAZARDOUS AND
+MAY RESULT IN ELECTRIC SHOCK.
+
+Finally, the authors do not guarantee that the information provided in
+the design files is complete or appropriate for any particular
+application.
+
+
+
+\section nfbrisks NEUROFEEDBACK RISKS
+  
+Neurofeedback training in itself can also cause unpleasant side-effects for
+a small number of people, or in certain unusual circumstances.  In an attempt
+to provide information to allow you to better judge the risks to yourself, we
+are listing here the ones we are aware of.
+
+As we are not experts, and you should research the subject yourself if
+you want to be sure.
+
+- Increased anxiety leading to tics, insomnia or even panic attacks.
+- Stimulation of latent seizure activity to full (epileptic) seizure activity.
+- Mood changes, such as depression or anger outbursts.
+
+If you have any mental health problem, you must check with a clinician before
+attempting neurofeedback on yourself. Neurofeedback can make your problems
+worse.
+
+Do not use it without the direction of someone qualified to give this
+information. 
+  
+If you are aware of any other unpleasant side-effects of using EEG
+equipment or doing neurofeedback training, please let us know through
+our mailing list, and we will update this WARNING file.  See
+http://openeeg.sf.net/ for details of our mailing list.
+
+\section others Using OpenEEG hardware and/or software with other people
+
+A list member also provided the following warning that might be useful
+to people in the USA who plan to use the OpenEEG hardware and/or
+software with other people:
+
+  Working on one's self is one thing, but when a person uses it for
+  others, there may be state laws that you can run afoul of.  For
+  example, in some states there are title laws, meaning one can
+  clinically practice anything one wants, but cannot call oneself a
+  title which is protected by law, e.g. psychologist.
+
+  Some states have practice laws which prohibit individuals from
+  actually doing the activity.  Thus to the extent that NFB training
+  can change personality (and it can) one is practicing psychotherapy.
+
+  In the state I live in, that is statutory controlled activity,
+  irrespective of what one calls oneself.  Probably if you and your
+  friends do it to each other, no one will bother you as long as no one
+  gets harmed and there is no basis for a lawsuit.
+
+  If however, you accept money for it, then it could be construed as
+  practice or even if no money is taken and you do things to structure
+  it so that there is a patient-doctor relationship, there could be
+  liability.
+
+  Again, someone would have to claim a harm.  Or, even a practitioner
+  in the community, if he or she knows you are doing it for free, can
+  complain to the licensing board and have you shut down as engaging
+  in unauthorized practice.
+
+  In short, if you accept money for it and/or do it to or with someone
+  other than yourself, it is a thin line requiring the lens of an
+  expert.
+
+
+ */
