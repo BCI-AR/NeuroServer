@@ -13,7 +13,9 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -67,8 +69,11 @@ struct ClientRecord {
 	int fd;
 	unsigned int isController;
 	unsigned int isReceiving;
+	unsigned int isDisconnected;
 	struct InputBuffer in;
 };
+
+void removeClient(int which);
 
 void setnonblocking(int sock)
 {
@@ -89,6 +94,7 @@ void setnonblocking(int sock)
 
 void printFullEDFHeader(int fd)
 {
+	printf("Sending EDF header\n");
 	writeEDF(fd, &current);
 }
 
@@ -106,6 +112,9 @@ void watchForP2(unsigned char nextByte)
 	s = (unsigned short *) (&ib.inbuf[4]);
 	vals[0] = ntohs(s[0]);
 	vals[1] = ntohs(s[1]);
+	// TODO: figure out why this line is necessary with p2 firmware!
+	if (vals[0] < 0 || vals[0] > 1023 || vals[1] < 0 || vals[1] > 1023)
+		return;
 //	printf("The packet counter is %03x\n", ib.inbuf[3]);
 	handleSamples(2, vals);
 }
@@ -113,6 +122,8 @@ void watchForP2(unsigned char nextByte)
 struct ClientRecord clients[MAX_CLIENTS];
 unsigned int clientCount = 0;
 int highSock;
+int currentClient;
+int pendingRemovals = 0;
 
 const char *getRecorderName(void)
 {
@@ -249,6 +260,12 @@ void sendResponseOK(int toWhom)
 	sendResponse(toWhom, 200, "OK");
 }
 
+void handler_SIGPIPE(int whatnot)
+{
+	clients[currentClient].isDisconnected = 1;
+	pendingRemovals = 1;
+}
+
 int main(int argc, char **argv)
 {
 	int retval;
@@ -259,6 +276,7 @@ int main(int argc, char **argv)
 	struct sockaddr_in localAddress;
 	char c;
 	int i;
+	signal(SIGPIPE, handler_SIGPIPE);
 	/* Initialize default configuration to p2Cfg */
 	makeREDFConfig(&current, &p2Cfg);
 	/* Open serial port */
@@ -317,10 +335,17 @@ int main(int argc, char **argv)
 				controllingIndex = clientCount;
 			clients[clientCount].isController = (controllingIndex == clientCount);
 			clients[clientCount].isReceiving = 0;
+			clients[clientCount].isDisconnected = 0;
 			clients[clientCount].in.inbufCount = 0;
 			clientCount += 1;
 		}
-
+		if (pendingRemovals) {
+			for (i = 0; i < clientCount; ++i) {
+				if (clients[i].isDisconnected)
+					removeClient(i);
+			}
+			pendingRemovals = 0;
+		}
 		for (i = 0; i < clientCount; ++i) {
 			if (FD_ISSET(clients[i].fd, &toRead)) {
 				retval = read(clients[i].fd, &c, 1);
@@ -353,8 +378,19 @@ int main(int argc, char **argv)
 			}
 		}
 	}
+	printf("Out of main loop\n");
 	close(serfd);
 	return 0;
+}
+
+void removeClient(int which)
+{
+	printf("Lost connection with client %d\n", which);
+	if (which != clientCount - 1) {
+		memmove(clients+which, clients+which+1, 
+			sizeof(clients[0]) * (clientCount - which - 1));
+	}
+	clientCount -= 1;
 }
 
 void handleSamples(unsigned int channelCount, const unsigned int *values)
@@ -365,13 +401,16 @@ void handleSamples(unsigned int channelCount, const unsigned int *values)
 	char *ptr;
 	int len;
 	ptr = sbuf;
-	for (i = 0; i < channelCount; ++i)
+	for (i = 0; i < channelCount; ++i) {
 		ptr += sprintf(ptr, "%d ", values[i]);
+		assert(values[i] >= 0 && values[i] < 1024);
+	}
 	len = strlen(sbuf);
 	sbuf[len-1] = '\n';
 	for (i = 0; i < clientCount; ++i) {
 		if (!clients[i].isReceiving)
 			continue;
+		currentClient = i;
 		write(clients[i].fd, sbuf, len);
 	}
 }
