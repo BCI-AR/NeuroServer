@@ -5,8 +5,8 @@ INCDIR=../src
 %.o: %.c
 	gcc $< -c -g -Wall -I. -mms-bitfields
 
-sampleclient: main.c $(OBJDIR)/nsnet.o $(OBJDIR)/nsutil.o $(OBJDIR)/pctimer.o $(OBJDIR)/openedf.o
-	gcc -Wall $(OBJDIR)/nsnet.o $(OBJDIR)/nsutil.o $(OBJDIR)/pctimer.o $(OBJDIR)/openedf.o main.c -o $@      \
+sampleclient: main.c $(OBJDIR)/nsnet.o $(OBJDIR)/nsutil.o $(OBJDIR)/pctimer.o $(OBJDIR)/openedf.o $(OBJDIR)/monitor.o
+	gcc -Wall $(OBJDIR)/nsnet.o $(OBJDIR)/nsutil.o $(OBJDIR)/pctimer.o $(OBJDIR)/openedf.o $(OBJDIR)/monitor.o main.c -o $@      \
 			 -I$(INCDIR) -mms-bitfields \
 	    -I/c/Dev-C++/lib/gtkmm-2.0/include \
 	    -I/c/Dev-C++/include/gtk-2.0 \

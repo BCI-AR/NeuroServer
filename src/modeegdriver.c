@@ -2,9 +2,9 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include "nsnet.h"
-#include "nsutil.h"
-#include "nsser.h"
+#include <nsnet.h>
+#include <nsutil.h>
+#include <nsser.h>
 #include <openedf.h>
 
 /* This is the maximum size of a protocol packet */
@@ -273,6 +273,7 @@ int main(int argc, char **argv)
 	char smallbuf[PROTOWINDOW];
 	char *hostname = DEFAULTHOST;
 	unsigned short portno = DEFAULTPORT;
+	struct timeval when;
 
 	rinitNetworking();
 
@@ -284,6 +285,7 @@ int main(int argc, char **argv)
 	
 	makeREDFConfig(&current, &modEEGCfg);
 	writeEDFString(&current, EDFPacket, &EDFLen);
+
 
 	sock_fd = rsocket();
 	if (sock_fd < 0) {
@@ -309,20 +311,38 @@ int main(int argc, char **argv)
 	writeBytes(sock_fd, EDFPacket, EDFLen, &ob);
 	writeString(sock_fd, "\n", &ob);
 	getOK(sock_fd, &ib);
+	updateMaxFd(sock_fd);
+#ifndef __MINGW32__
+	updateMaxFd(serport);
+#endif
+	rprintf("Polling at %d Hertz or %d usec\n", modEEGCfg.chan[0].sampleCount, when.tv_usec);
 	for (;;) {
 		int i, readSerBytes;
+		int retval;
+		fd_set toread;
+		when.tv_sec = 0;
+		when.tv_usec = (1000000L / modEEGCfg.chan[0].sampleCount);
+		FD_ZERO(&toread);
+		FD_SET(sock_fd, &toread);
+#ifndef __MINGW32__
+		FD_SET(serport, &toread);
+#endif
+		retval = rselect_timed(max_fd, &toread, NULL, NULL, &when);
 		readSerBytes = readSerial(serport, smallbuf, PROTOWINDOW);
 		if (readSerBytes < 0) {
-			printf("Serial error.\n");
-			continue;
+			rprintf("Serial error.\n");
+		}
+		if (readSerBytes > 0) {
+			for (i = 0; i < readSerBytes; ++i)
+				eatCharacter(smallbuf[i]);
+		}
+		if (FD_ISSET(sock_fd, &toread)) {
+			rprintf("Extra characters to read\n");
 		}
 		if (isEOF(sock_fd, &ib)) {
-			rprintf("Server died, exitting.\n");
-			exit(0);
+					rprintf("Server died, exitting.\n");
+					exit(0);
 		}
-
-		for (i = 0; i < readSerBytes; ++i)
-			eatCharacter(smallbuf[i]);
 	}
 
 	return 0;

@@ -59,11 +59,13 @@ void initInputBuffer(struct InputBuffer *ib);
 void initOutputBuffer(struct OutputBuffer *ob);
 int isEOF(sock_t con, const struct InputBuffer *ib);
 int inputBufferEmpty(const struct InputBuffer *ib);
-size_t my_read(sock_t fd, char *ptr, struct InputBuffer *);
-size_t readline(sock_t fd, void *vptr, size_t maxlen, struct InputBuffer *);
+int my_read(sock_t fd, char *ptr, struct InputBuffer *);
+int readline(sock_t fd, void *vptr, size_t maxlen, struct InputBuffer *);
 size_t readlinebuf(void **vptrptr, struct InputBuffer *);
 size_t writen(sock_t fd, const void *vptr, size_t len, struct OutputBuffer *ob);
 size_t readn(sock_t fd, void *vptr, size_t len, struct InputBuffer *ib);
-size_t rselect(sock_t max_fd, fd_set *read, fd_set *write, fd_set *err);
+int rselect(sock_t max_fd, fd_set *read, fd_set *write, fd_set *err);
+int rselect_timed(sock_t max_fd, fd_set *toread, fd_set *towrite, 
+	fd_set *toerr, struct timeval *tv);
 
 #endif

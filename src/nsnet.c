@@ -3,8 +3,9 @@
 #include <string.h>
 #include <assert.h>
 #include <stdlib.h>
-#include "nsnet.h"
-#include "nsutil.h"
+#include <nsnet.h>
+#include <nsutil.h>
+#include <monitor.h>
 
 #ifndef __MINGW32__
 #include <signal.h>
@@ -78,8 +79,7 @@ void setblocking(sock_t sock_fd)
 		if (retval != 0) {
 			int winerr;
 			winerr = WSAGetLastError();
-			rprintf("Got error code %s\n", stringifyErrorCode(winerr));
-			rprintf("Error clearing FIONBIO\n");
+			monitorLog(PLACE_SETBLOCKING, winerr);
 			rexit(1);
 		}
 	} while (0);
@@ -209,13 +209,15 @@ int rconnectName(sock_t sock_fd, const char *hostname, unsigned short portno)
 		winerr = WSAGetLastError();
 		if (retval == SOCKET_ERROR && winerr == WSAEISCONN)
 			retval = 0;
-		if (retval == SOCKET_ERROR) rprintf("Got error code %s\n", stringifyErrorCode(winerr));
+		if (retval == SOCKET_ERROR)
+			monitorLog(PLACE_CONNECT, winerr);
 	} while (retval == SOCKET_ERROR);
 #else
 		if (retval != 0 && errno != EINPROGRESS) {
 			perror("connect");
 			exit(1);
 		}
+		monitorLog(PLACE_CONNECT, winerr);
 	} while (retval == -1 && errno == EINPROGRESS);
 #endif
 	return retval;
@@ -253,8 +255,19 @@ int writeString(sock_t con, const char *buf, struct OutputBuffer *ob)
 
 int rrecv(sock_t fd, char *read_buf, size_t count)
 {
-	int retval;
+	int retval = -1;
 	retval = recv(fd, read_buf, count, 0);
+#ifdef __MINGW32__
+	int winerr;
+	if (retval == SOCKET_ERROR) {
+		winerr = WSAGetLastError();
+		if (winerr == WSAEISCONN)
+			retval = 0;
+		if (winerr == WSAENOTCONN || winerr == WSAECONNRESET)
+			retval = -1;
+		monitorLog(PLACE_RRECV, winerr);
+	}
+#endif
 	return retval;
 }
 
@@ -274,7 +287,7 @@ int writeBytes(sock_t con, const char *buf, int size, struct OutputBuffer *ob)
 		do {
 			int winerr;
 			winerr = WSAGetLastError();
-			rprintf("Error code: %s\n", stringifyErrorCode(winerr));
+			monitorLog(PLACE_WRITEBYTES, winerr);
 		} while (0);
 #endif
 	}
@@ -291,21 +304,22 @@ void initInputBuffer(struct InputBuffer *ib)
 	memset(ib, 0, sizeof(*ib));
 }
 
-size_t my_read(sock_t fd, char *ptr, struct InputBuffer *ib)
+int my_read(sock_t fd, char *ptr, struct InputBuffer *ib)
 {
 	//setblocking(fd);
-	again:
+	//again:
 	if (ib->read_cnt <= 0) {
 			if ( (ib->read_cnt = rrecv(fd, ib->read_buf, MAXLEN)) < 0) {
 #ifdef __MINGW32__
 				int winerr;
 				winerr = WSAGetLastError();
+				monitorLog(PLACE_MYREAD, winerr);
 				if (winerr == WSAECONNABORTED || winerr == WSAECONNRESET) {
 					ib->isEOF = 1;
 					return -1;
 				}
-				if (winerr == WSAEWOULDBLOCK) goto again;
-				rprintf("Got my_read error %s\n", stringifyErrorCode(winerr));
+				if (winerr == WSAEWOULDBLOCK)
+					return 0;
 //				if (winerr == WSAESHUTDOWN || winerr == WSAENOTCONN || winerr == WSAECONNRESET)
 #else
 #endif
@@ -367,25 +381,30 @@ size_t writen(sock_t fd, const void *vptr, size_t len, struct OutputBuffer *ob)
 	return len;
 }
 
-size_t readline(sock_t fd, void *vptr, size_t maxlen, struct InputBuffer *ib)
+int readline(sock_t fd, void *vptr, size_t maxlen, struct InputBuffer *ib)
 {
-	size_t n, rc;
+	size_t n;
+	int rc;
 	char c, *ptr;
 
+	setblocking(fd);
 	ptr = vptr;
 	for (n = 1; n < maxlen; n++) {
-		if ( (rc = my_read(fd, &c, ib)) == 1) {
+		rc = my_read(fd, &c, ib);
+		if (rc == -1)
+			return -1;
+		if (rc == 0) {
+			*ptr = 0;
+			n -= 1;
+			break;
+		}
+		if (rc == 1) {
 			if (c != '\n' && c != '\r')
 				*ptr++ = c;
 			if (c == '\n')
 				break;
-		} else if (rc == 0) {
-			*ptr = 0;
-			return (n - 1);
-		} else
-				return -1;
+		} 
 	}
-	
 	*ptr = '\0';
 	return n;
 }
@@ -409,6 +428,10 @@ int getOK(sock_t sock_fd, struct InputBuffer *ib)
 	do {
 		retcode = getResponseCode(sock_fd, ib);
 	} while (retcode == 0);
+	if (retcode == -1) {
+		rprintf("Server died, exitting.\n");
+		exit(0);
+	}
 
 //	printf("getOK retcode now %d\n", retcode);
 		
@@ -427,14 +450,40 @@ int getResponseCode(sock_t sock_fd, struct InputBuffer *ib)
 		len = readline(sock_fd, linebuf, MAXLEN, ib);
 	} while (len == 0 && !isEOF(sock_fd, ib));
 	if (isEOF(sock_fd, ib))
-		return 0;
+		return -1;
 	linebuf[len] = '\0';
 //	rprintf("Got response: <%s>\n", linebuf);
 	strtok(linebuf, " ");
 	return atoi(linebuf);
 }
 
-size_t rselect(sock_t max_fd, fd_set *toread, fd_set *towrite, fd_set *toerr)
+static int rselect_real(sock_t max_fd, fd_set *toread, fd_set *towrite, 
+	fd_set *toerr,
+	struct timeval *tv)
 {
-	return select(max_fd, toread, towrite, toerr, NULL);
+	return select(max_fd, toread,towrite, toerr, tv);
+}
+
+int rselect_timed(sock_t max_fd, fd_set *toread, fd_set *towrite, 
+	fd_set *toerr, struct timeval *tv)
+{
+	int retval;
+	retval = rselect_real(max_fd, toread, towrite, toerr, tv);
+}
+	
+int rselect(sock_t max_fd, fd_set *toread, fd_set *towrite, fd_set *toerr)
+{
+	int retval;
+
+	retval = rselect_real(max_fd, toread, towrite, toerr, NULL);
+#ifdef __MINGW32__
+	if (retval == SOCKET_ERROR) {
+		int winerr;
+		winerr = WSAGetLastError();
+		monitorLog(PLACE_RSELECT, winerr);
+	}
+#else
+#endif
+
+	return retval;
 }
