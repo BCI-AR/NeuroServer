@@ -6,6 +6,7 @@
 #include <nsnet.h>
 #include <fcntl.h>
 #include <assert.h>
+#include <neuro/neuro.h>
 #include <neuro/ns2net.h>
 
 
@@ -92,6 +93,7 @@ int attemptConnect(struct NSNet *ns, const struct NSNetConnectionHandler *nsc,
 {
   int retval;
   int num;
+  int connErrno = 0;
   sock_t fd;
   rsockaddr_t dest;
   if (makeAddress(destaddr, destPort, &dest, nsc, udata)) {
@@ -101,15 +103,17 @@ int attemptConnect(struct NSNet *ns, const struct NSNetConnectionHandler *nsc,
   printf("Got socket!\n");
   setNSnonblocking(ns, fd);
   printf("set nonblock socket!\n");
+  errno = 0;
   retval = connect(fd, (struct sockaddr *) &dest, sizeof(dest));
+  if (retval == -1) connErrno = errno;
   printf("got %d from connect\n", retval);
+  printf("connErrno is %d\n", connErrno);
   if (retval == 0) {
     nsc->success(udata);
     return 0;
   }
-  assert(retval == -1);
-  perror("Connect");
-  if (errno == EINPROGRESS) {
+  rassert(retval == -1);
+  if (connErrno == EINPROGRESS) {
     num = ns->NSCICount;
     ns->NSCICount += 1;
     ns->nsci[num].nsc = *nsc;
@@ -121,6 +125,7 @@ int attemptConnect(struct NSNet *ns, const struct NSNetConnectionHandler *nsc,
     addReadFd(ns, fd);
     return 1;
   }
+  rassert(0 && "Unkown connect error");
   return 1;
 }
 
@@ -152,8 +157,17 @@ void waitForNetEvent(struct NSNet *ns, int timeout)
   printf("Got %d descriptors\n", retval);
   if (retval > 0) { // There are some fds ready
     int i;
+    int connErrno, connErrnoLen = sizeof(connErrno);
     for (i = 0; i < ns->NSCICount; i+=1) {
       if (FD_ISSET(ns->nsci[i].fd, &writefds) || FD_ISSET(ns->nsci[i].fd, &errfds) || FD_ISSET(ns->nsci[i].fd, &readfds)) {
+        if (getsockopt(ns->nsci[i].fd, SOL_SOCKET, SO_ERROR, &connErrno, &connErrnoLen) == 0) {
+          printf("Got recalled socked connErrno = %d\n", connErrno);
+              if (connErrno == ECONNREFUSED) {
+                ns->nsci[i].nsc.refused(ns->nsci[i].udata);
+                removeFdAll(ns, ns->nsci[i].fd);
+                return;
+              }
+            }
         removeFdAll(ns, ns->nsci[i].fd);
         printf("Inside WaitFor with %s\n", showFD(ns->nsci[i].fd, &readfds, &writefds, &errfds));
 //        retval = connect(ns->nsci[i].fd, (struct sockaddr *) &(ns->nsci[i].dest), sizeof(struct sockaddr));

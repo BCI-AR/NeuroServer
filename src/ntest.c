@@ -44,7 +44,7 @@ static void testNSConnect(void) {
   rassert(cur.success == 0 && cur.unknownHost == 1 && cur.refused == 0 && cur.timedOut == 0);
   cur = basic;
   rassert(attemptConnect(ns, &nsch, "localhost", 5555, &cur));
-  waitForNetEvent(ns, 1000);
+  waitForNetEvent(ns, 2000);
   rassert(cur.success == 0 && cur.unknownHost == 0 && cur.refused == 1 && cur.timedOut == 0);
   cur = basic;
   rassert(attemptConnect(ns, &nsch, "localhost", 22, &cur));
