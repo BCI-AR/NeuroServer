@@ -8,7 +8,7 @@
 
 require 'socket'
 
-@verbose = false
+@verbose = true
 @con = nil
 @history = [ ]
 @testname = nil
@@ -20,6 +20,7 @@ end
 def beginTest(str)
 	puts "Beginning test #{str}"
 	@testname = str
+	clearHistory()
 end
 
 def finishedTest()
@@ -31,7 +32,6 @@ def connectToServer()
 	port = 8336
 	hostname = 'localhost' unless hostname
 	@con = TCPSocket.new(hostname, port)
-	clearHistory()
 end
 
 def failedTest()
@@ -121,9 +121,24 @@ def doTest02()
 	finishedTest()
 end
 
+def doTest03()
+	beginTest("03-status")
+	connectToServer()
+	sendCommand("display")
+	getOK()
+	sendCommand("status")
+	getOK()
+	shouldBe("1 clients connected")
+	shouldBe("0:Display")
+	sendCommand("close")
+	getOK()
+	finishedTest()
+end
+
 def doTests()
 	doTest01()
 	doTest02()
+	doTest03()
 end
 
 doTests()

@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdlib.h>
 #include "nsutil.h"
 #include "nsnet.h"
 #include "cmdhandler.h"

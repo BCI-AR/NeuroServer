@@ -35,12 +35,59 @@ struct Options {
 	double seconds;
 };
 
+struct EDFDecodedConfig cfg;
 static struct OutputBuffer ob;
 struct InputBuffer ib;
 char lineBuf[MAXLEN];
 int linePos = 0;
 
+unsigned short **sampleBuffers; // [MAXCHANNELS][MAXSAMPLES]
+unsigned int sampleCount;
+
 struct Options opts;
+
+void resetSampleBuffers()
+{
+	sampleCount = 0;
+}
+
+void initSampleBuffers()
+{
+	int i;
+	sampleBuffers = calloc(sizeof(unsigned short *), cfg.hdr.dataRecordChannels);
+	for (i = 0; i < cfg.hdr.dataRecordChannels; ++i)
+		sampleBuffers[i] = calloc(cfg.chan[0].sampleCount, sizeof(unsigned short));
+	resetSampleBuffers();
+}
+
+void writeBuffers()
+{
+	int i;
+	FILE *fp;
+	fp = fopen(opts.filename, "a");
+	assert(fp != NULL && "Cannot open file!");
+	fseek(fp, 0, SEEK_END);
+	for (i = 0; i < cfg.hdr.dataRecordChannels; ++i)
+		fwrite(sampleBuffers, sizeof(unsigned short), sampleCount, fp);
+	fclose(fp);
+	resetSampleBuffers();
+}
+
+void handleSamples(int packetCounter, int channels, int *samples)
+{
+	static int lastPacketCounter = 0;
+	int i;
+	if (lastPacketCounter + 1 != packetCounter && packetCounter != 0 && lastPacketCounter != 0) {
+		rprintf("May have missed packet: got packetCounters %d and %d\n", lastPacketCounter, packetCounter);
+	}
+	lastPacketCounter = packetCounter;
+	for (i = 0; i < channels; ++i)
+		sampleBuffers[i][sampleCount] = samples[i];
+	sampleCount += 1;
+	if (sampleCount == cfg.chan[0].sampleCount) {
+		writeBuffers();
+	}
+}
 
 int isANumber(const char *str) {
 	int i;
@@ -61,7 +108,6 @@ int main(int argc, char **argv)
 	char EDFPacket[MAXHEADERLEN];
 	char cmdbuf[80];
 	int EDFLen = MAXHEADERLEN;
-	struct EDFDecodedConfig cfg;
 	FILE *fp;
 	fd_set toread;
 	int i;
@@ -140,7 +186,10 @@ int main(int argc, char **argv)
 		serverDied();
 	EDFLen = readline(sock_fd, EDFPacket, sizeof(EDFPacket), &ib);
 	rprintf("Got EDF Header <%s>\n", EDFPacket);
+	fwrite(EDFPacket, 1, EDFLen, fp);
+	fclose(fp);
 	readEDFString(&cfg, EDFPacket, EDFLen);
+	initSampleBuffers();
 	sprintf(cmdbuf, "watch %d\n", opts.eegNum);
 	writeString(sock_fd, cmdbuf, &ob);
 	getOK(sock_fd, &ib);
@@ -172,6 +221,7 @@ int main(int argc, char **argv)
 				packetCounter = vals[1];
 				channels = vals[2];
 				samples = vals + 3;
+				handleSamples(packetCounter, channels, samples);
 //				for (i = 0; i < channels; ++i) {
 //					rprintf(" %d", samples[i]);
 //				}
