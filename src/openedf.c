@@ -9,6 +9,7 @@
 #include <openedf.h>
 #include <unistd.h>
 #include <edfmacros.h>
+#include <nsutil.h>
 
 #define MAXERRORLEN 1024
 
@@ -115,6 +116,45 @@ void EDFDecodeHeaderPreamble(struct EDFDecodedHeader *result, const char *packet
 	LOADHFI(dataRecordCount);
 	LOADHFD(dataRecordSeconds);
 	LOADHFI(dataRecordChannels);
+}
+
+int readEDFString(struct EDFDecodedConfig *cfg, const char *buf, int len)
+{
+	int i;
+	if (len >= 256)
+		EDFDecodeHeaderPreamble(&cfg->hdr, buf);
+	else {
+		rprintf("Header too small\n");
+		return 1;
+	}
+	assert(cfg->hdr.dataRecordChannels > 0);
+	assert(cfg->hdr.dataRecordChannels < MAXCHANNELS);
+	setEDFHeaderBytes(cfg);
+	if (len < cfg->hdr.headerRecordBytes) {
+		rprintf("Header too small\n");
+		return 1;
+	}
+	for (i = 0; i < cfg->hdr.dataRecordChannels; ++i) {
+		EDFDecodeChannelHeader(&cfg->chan[i], buf+256, i, cfg->hdr.dataRecordChannels);
+	}
+	return 0;
+}
+
+int writeEDFString(const struct EDFDecodedConfig *cfg, char *buf, int *buflen)
+{
+	int retval;
+	char pktbuf[(MAXCHANNELS+1) * 256];
+	retval = EDFEncodePacket(pktbuf, cfg);
+	if (retval) return retval;
+	if (cfg->hdr.headerRecordBytes <= *buflen) {
+		*buflen = cfg->hdr.headerRecordBytes;
+		memcpy(buf, pktbuf, *buflen);
+		return 0;
+	}
+	else {
+		*buflen = 0;
+		return 1;
+	}
 }
 
 int writeEDF(int fd, const struct EDFDecodedConfig *cfg)
