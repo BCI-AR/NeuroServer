@@ -20,7 +20,11 @@ of internet RFC's.  As such, it will be testable using, for example,
 
 telnet localhost 8336
 
-Over the TCP link, the following commands are allowed:
+Over the TCP link, the following commands are allowed.  When a
+command is issued by the client, the server will first send back a
+single line that contains a 3-digit decimal response code, a space, 
+and then a message followed by a CR and LF.  At this point, the only
+two response codes are "200 OK" or "400 BAD REQUEST"
 
 GetConnStatus (for all connections)
 prints either "controller" or "observer", depending on the type of the
@@ -28,7 +32,7 @@ connection
 
 GetEDFHeader  (for all connections)
 This command sends back a 256 * (channelcount + 1) EDF header that
-includes all the information available about the currently active
+includes plenty of information about the currently active
 configuration in the OpenEEG.  Because it is EDF format, all numbers
 are encoded as space-padded ASCII strings, and are thus language
 neutral.  Because most visualization software already supports the EDF

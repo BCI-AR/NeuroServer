@@ -297,6 +297,24 @@ options.c_cflag |= CS8;
 	retval = tcsetattr(fd, TCSANOW, &options);
 }
 
+/* Call this function with no newlines at the end of msg */
+void sendResponse(int toWhom, int respCode, const char *msg)
+{
+	char buf[128];
+	sprintf(buf, "%03d %s\r\n", respCode, msg);
+	write(clients[toWhom].fd, buf, strlen(buf));
+}
+
+void sendResponseBadRequest(int toWhom)
+{
+	sendResponse(toWhom, 400, "BAD REQUEST");
+}
+
+void sendResponseOK(int toWhom)
+{
+	sendResponse(toWhom, 200, "OK");
+}
+
 int main(int argc, char **argv)
 {
 	int retval;
@@ -373,19 +391,27 @@ int main(int argc, char **argv)
 				if (retval == 1) {
 					eatCharacter(&clients[i].in, c);
 					if (isNewLine(c)) {
+						if (isNewLine(clients[i].in.inbuf[MAXLINELENGTH-2])) {
+							continue;  // ignore blank lines
+						}
 						if (doesMatchCommandNL(&clients[i].in, "GetEDFHeader")) {
+							sendResponseOK(i);
 							printFullEDFHeader(clients[i].fd);
 							continue;
 						}
 						if (doesMatchCommandNL(&clients[i].in, "GetConnStatus")) {
 							char *str;
+							sendResponseOK(i);
 							str = clients[i].isController ? "controller" : "observer";
 							write(clients[i].fd, str, strlen(str));
 							continue;
 						}
 						if (doesMatchCommandNL(&clients[i].in, "SendSamples")) {
+							sendResponseOK(i);
 							clients[i].isReceiving = 1;
+							continue;
 						}
+						sendResponseBadRequest(i);
 					}
 				}
 			}
