@@ -62,7 +62,7 @@ const float FM_IF_Freq = 3000;	// this is the aliased FM IF from the ELENCO kit
 const float IF_Freq = FM_IF_Freq;
 
 const int chanTaps = 75;
-const int CFIRdecimate = 125;
+const int CFIRdecimate = 10;
 const float chanGain = 20.0;
 
 
