@@ -126,6 +126,7 @@ int attemptConnect(struct NSNet *ns, const struct NSNetConnectionHandler *nsc,
   return 1;
 }
 
+#if 0
 static char *showFD(sock_t fd, fd_set *readfds, fd_set *writefds, fd_set *errfds) {
   static char buf[16];
   buf[0] = 0;
@@ -136,6 +137,7 @@ static char *showFD(sock_t fd, fd_set *readfds, fd_set *writefds, fd_set *errfds
     buf[strlen(buf)-1] = 0;
   return buf;
 }
+#endif
 
 void waitForNetEvent(struct NSNet *ns, int timeout)
 {
