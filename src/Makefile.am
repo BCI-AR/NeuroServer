@@ -2,7 +2,9 @@
 
 CPPFLAGS= -I.
 
-bin_PROGRAMS = neurod
+bin_PROGRAMS = neurod testedf
 
-neurod_SOURCES = neurod.c neurod.h
+neurod_SOURCES = neurod.c neurod.h openedf.c openedf.h
+
+testedf_SOURCES = testedf.c openedf.c openedf.h
 
