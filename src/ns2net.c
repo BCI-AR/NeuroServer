@@ -10,25 +10,34 @@
 #include <neuro/neuro.h>
 #include <neuro/ns2net.h>
 
-
 struct NSNetConnectionController {
   struct NSNet *ns;
+  void *udata;
   rsockaddr_t peer;
   sock_t fd;
 };
 
+struct NSNetReaderHandlerInternal {
+  struct NSNet *ns;
+  sock_t fd;
+  void *udata;
+  struct NSNetConnectionReadHandler nsrh;
+};
+
 struct NSNetBindHandlerInternal {
+  struct NSNet *ns;
   sock_t fd;
   void *udata;
   struct NSNetBindHandler nsb;
 };
 
 struct NSNetConnectionHandlerInternal {
+  struct NSNet *ns;
   sock_t fd;
-  rsockaddr_t dest;
-  struct NSNetConnectionHandler nsc;
-  struct NSNetConnectionController nscc;
   void *udata;
+  struct NSNetConnectionHandler nsc;
+  rsockaddr_t dest;
+  struct NSNetConnectionController nscc;
 };
 
 #define MAXCONN 256
@@ -37,13 +46,23 @@ struct NSNet {
   sock_t max_fd;
   fd_set readfds, writefds, errfds;
   int NSCICount;
-  struct NSNetConnectionHandlerInternal nsci[MAXCONN];
+  struct StringTable *connectMap;
   struct StringTable *bindMap;
+  struct StringTable *readerMap;
 };
 
 static void addWriteFd(struct NSNet *ns, sock_t fd);
 static void addReadFd(struct NSNet *ns, sock_t fd);
 static void addErrFd(struct NSNet *ns, sock_t fd);
+
+int attachConnectionReadHandler(struct NSNetConnectionController *nscc,
+    const struct NSNetConnectionReadHandler *nscch)
+{
+  struct NSNet *ns;
+  ns = nscc->ns;
+  //putInt(ns->readerMap, nscc->fd, nscch);
+  return 0;
+}
 
 int attemptBind(struct NSNet *ns, const struct NSNetBindHandler *nsb,
                 int isLocalOnly, unsigned short portNum, void *udata)
@@ -174,7 +193,6 @@ int attemptConnect(struct NSNet *ns, const struct NSNetConnectionHandler *nsc,
                     const char *destaddr, unsigned short destPort, void *udata)
 {
   int retval;
-  int num;
   int connErrno = 0;
   sock_t fd;
   rsockaddr_t dest;
@@ -191,20 +209,23 @@ int attemptConnect(struct NSNet *ns, const struct NSNetConnectionHandler *nsc,
     nscc->ns = ns;
     nscc->fd = fd;
     nscc->peer = dest;
+    nscc->udata = udata;
     nsc->success(udata, nscc);
     return 0;
   }
   rassert(retval == -1);
   if (connErrno == EINPROGRESS) {
-    num = ns->NSCICount;
-    ns->NSCICount += 1;
-    ns->nsci[num].nsc = *nsc;
-    ns->nsci[num].fd = fd;
-    ns->nsci[num].dest = dest;
-    ns->nsci[num].udata = udata;
+    struct NSNetConnectionHandlerInternal *connectHI;
+    connectHI = calloc(sizeof(*connectHI), 1);
+    connectHI->ns = ns;
+    connectHI->nsc = *nsc;
+    connectHI->fd = fd;
+    connectHI->dest = dest;
+    connectHI->udata = udata;
     addWriteFd(ns, fd);
     addErrFd(ns, fd);
     addReadFd(ns, fd);
+    putInt(ns->connectMap, fd, connectHI);
     return 0;
   }
   rassert(0 && "Unkown connect error");
@@ -224,6 +245,12 @@ static char *showFD(sock_t fd, fd_set *readfds, fd_set *writefds, fd_set *errfds
 }
 #endif
 
+static void removeConnectionHandlerInternal(struct NSNet *ns, struct NSNetConnectionHandlerInternal *connectHI)
+{
+  delInt(ns->connectMap, connectHI->fd);
+  free(connectHI);
+}
+
 void waitForNetEvent(struct NSNet *ns, int timeout)
 {
   fd_set readfds, writefds, errfds;
@@ -231,6 +258,8 @@ void waitForNetEvent(struct NSNet *ns, int timeout)
   struct timeval tv;
   struct NSNetConnectionController *nscc;
   struct NSNetBindHandlerInternal *bindHI;
+  struct NSNetConnectionHandlerInternal *connectHI;
+  //struct NSNetReaderHandlerInternal *readerHI;
   int retval;
   int i;
   readfds = ns->readfds;
@@ -249,29 +278,33 @@ void waitForNetEvent(struct NSNet *ns, int timeout)
         int addrlen = sizeof(nscc->peer);
         nscc = calloc(sizeof(*nscc), 1);
         nscc->ns = ns;
+        nscc->udata = bindHI->udata;
         nscc->fd = accept(i, (struct sockaddr *) &nscc->peer, &addrlen);
         bindHI->nsb.success(bindHI->udata, nscc);
       }
     }
-    for (i = 0; i < ns->NSCICount; i+=1)
+    for (i = 0; i < ns->max_fd; i+= 1)
     {
-      if (FD_ISSET(ns->nsci[i].fd, &writefds) || FD_ISSET(ns->nsci[i].fd, &errfds) || FD_ISSET(ns->nsci[i].fd, &readfds)) 
+      if ((FD_ISSET(i, &writefds) || FD_ISSET(i, &errfds) || FD_ISSET(i, &readfds)) && (connectHI = findInt(ns->connectMap, i)))
       {
-        if (getsockopt(ns->nsci[i].fd, SOL_SOCKET, SO_ERROR, &connErrno, &connErrnoLen) == 0) 
+        if (getsockopt(connectHI->fd, SOL_SOCKET, SO_ERROR, &connErrno, &connErrnoLen) == 0) 
         {
           switch(connErrno)
           {
             case ECONNREFUSED:
-              ns->nsci[i].nsc.refused(ns->nsci[i].udata);
-              removeFdAll(ns, ns->nsci[i].fd);
+              connectHI->nsc.refused(connectHI->udata);
+              removeFdAll(ns, connectHI->fd);
+              removeConnectionHandlerInternal(ns, connectHI);
               break;
             case 0:
               nscc = calloc(sizeof(*nscc), 1);
               nscc->ns = ns;
-              nscc->peer = ns->nsci[i].dest;
-              nscc->fd = ns->nsci[i].fd;
-              ns->nsci[i].nsc.success(ns->nsci[i].udata, nscc);
-              removeFdAll(ns, ns->nsci[i].fd);
+              nscc->peer = connectHI->dest;
+              nscc->fd = connectHI->fd;
+              nscc->udata = connectHI->udata;
+              connectHI->nsc.success(connectHI->udata, nscc);
+              removeFdAll(ns, connectHI->fd);
+              removeConnectionHandlerInternal(ns, connectHI);
               break;
             default:
               printf("Unhandled connErrno: %d\n", connErrno);
@@ -281,11 +314,6 @@ void waitForNetEvent(struct NSNet *ns, int timeout)
           return;
         }
       }
-    }
-  }
-  else {
-    for (i = 0; i < ns->NSCICount; ++i) {
-      ns->nsci[i].nsc.timedOut(ns->nsci[i].udata);
     }
   }
 }
@@ -298,12 +326,16 @@ struct NSNet *newNSNet(void)
   FD_ZERO(&result->writefds);
   FD_ZERO(&result->errfds);
   result->bindMap = newStringTable();
+  result->connectMap = newStringTable();
+  result->readerMap = newStringTable();
   return result;
 }
 
 void closeNSNet(struct NSNet *ns)
 {
   freeStringTable(ns->bindMap);
+  freeStringTable(ns->connectMap);
+  freeStringTable(ns->readerMap);
   free(ns);
 }
 

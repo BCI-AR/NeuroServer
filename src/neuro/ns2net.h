@@ -20,7 +20,7 @@ struct NSNetBindHandler {
   NSNetFunc error;
 };
 
-struct NSNetConnectionControlHandler {
+struct NSNetConnectionReadHandler {
   NSNetFunc closed;
   NSNetReadFunc bytesRead;
 };
@@ -32,9 +32,8 @@ int attemptBind(struct NSNet *ns, const struct NSNetBindHandler *nsb,
                 int isLocalOnly, unsigned short portNum, void *udata);
 int attemptConnect(struct NSNet *ns, const struct NSNetConnectionHandler *nsc,
                     const char *destaddr, unsigned short destPort, void *udata);
-
-int attachConnectionControlHandler(struct NSNetConnectionController *nscc,
-    const struct NSNetConnectionControlHandler *nscch);
+int attachConnectionReadHandler(struct NSNetConnectionController *nscc,
+    const struct NSNetConnectionReadHandler *nscch);
 int writeNSBytes(struct NSNetConnectionController *nscc, void *buf, int len);
 int closeConnection(struct NSNetConnectionController *nscc);
 
