@@ -6,6 +6,40 @@
 
 struct NSCounter { int success, timedOut, refused, unknownHost, bindSuccess, bindError; };
 
+struct NSNetConnectionController *bindNSCC, *connectNSCC;
+
+#define MAXCHAR 1024
+
+char readBuffer[MAXCHAR];
+int readLen;
+static void clearReadBuffer(void)
+{
+  readLen = 0;
+}
+
+static void readBufferMustMatch(const char *str)
+{
+  rassert(readLen == strlen(str));
+  rassert(strncmp(str, readBuffer, strlen(str)) == 0);
+}
+
+
+static void NSRHBytesRead(void *udata, const char *buf, int len)
+{
+    int i;
+    for (i = 0; i < len; ++i) {
+      rassert(readLen < MAXCHAR);
+      readBuffer[readLen] = buf[i];
+      readLen += 1;
+      putchar(buf[i]);
+    }
+}
+
+static void NSRHClosed(void *udata)
+{
+  printf("NSRH Stream closed.\n");
+}
+
 static void NSBHBindError(void *udata) {
   struct NSCounter *count = (struct NSCounter *) udata;
   count->bindError += 1;
@@ -26,14 +60,23 @@ static void NSCHRefused(void *udata) {
   count->refused += 1;
 }
 
+static struct NSNetConnectionReadHandler nsrh;
+
 static void NSBHBindSuccess(void *udata, struct NSNetConnectionController *nscc) {
   struct NSCounter *count = (struct NSCounter *) udata;
+  int retval;
   count->bindSuccess += 1;
+  retval = attachConnectionReadHandler(nscc, &nsrh, "bindsuccess");
+  rassert(retval == 0);
+  bindNSCC = nscc;
 }
 
 static void NSCHSuccess(void *udata, struct NSNetConnectionController *nscc) {
+  int retval;
   struct NSCounter *count = (struct NSCounter *) udata;
   count->success += 1;
+  retval = attachConnectionReadHandler(nscc, &nsrh, "connectsuccess");
+  connectNSCC = nscc;
 }
 
 static void testNSConnect(void) {
@@ -43,6 +86,9 @@ static void testNSConnect(void) {
   struct NSNetConnectionHandler nsch;
   struct NSNetBindHandler nsbh;
   struct NSNet *ns;
+
+  nsrh.bytesRead = NSRHBytesRead;
+  nsrh.closed = NSRHClosed;
 
   nsch.success = NSCHSuccess;
   nsch.timedOut = NSCHTimedOut;
@@ -73,6 +119,21 @@ static void testNSConnect(void) {
   rassert(0 == attemptConnect(ns, &nsch, "localhost", portNum+1, &cur));
   waitForNetEvent(ns, 1000);
   rassert(cur.bindSuccess == 1 && cur.bindError == 0);
+  rassert(connectNSCC != NULL);
+  rassert(bindNSCC != NULL);
+  clearReadBuffer();
+  { char *msg = "msgtoserver"; writeNSBytes(connectNSCC, msg, strlen(msg)); }
+  waitForNetEvent(ns, 1000);
+  readBufferMustMatch("msgtoserver");
+  clearReadBuffer();
+  { char *msg = "msgtoclient!"; 
+    while (*msg) {
+      writeNSBytes(bindNSCC, msg, 1);
+      waitForNetEvent(ns, 1000);
+      msg += 1;
+    }
+  }
+  readBufferMustMatch("msgtoclient!");
 }
 
 static void testNSNet(void)

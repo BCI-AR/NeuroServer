@@ -17,7 +17,7 @@ struct NSNetConnectionController {
   sock_t fd;
 };
 
-struct NSNetReaderHandlerInternal {
+struct NSNetReadHandlerInternal {
   struct NSNet *ns;
   sock_t fd;
   void *udata;
@@ -56,11 +56,18 @@ static void addReadFd(struct NSNet *ns, sock_t fd);
 static void addErrFd(struct NSNet *ns, sock_t fd);
 
 int attachConnectionReadHandler(struct NSNetConnectionController *nscc,
-    const struct NSNetConnectionReadHandler *nscch)
+    const struct NSNetConnectionReadHandler *nscch, void *udata)
 {
   struct NSNet *ns;
+  struct NSNetReadHandlerInternal *newReader;
   ns = nscc->ns;
-  //putInt(ns->readerMap, nscc->fd, nscch);
+  newReader = (struct NSNetReadHandlerInternal *)calloc(sizeof(*newReader),1);
+  newReader->nsrh = *nscch;
+  newReader->udata = udata;
+  newReader->fd = nscc->fd;
+  newReader->ns = ns;
+  putInt(ns->readerMap, nscc->fd, newReader);
+  addReadFd(ns, nscc->fd);
   return 0;
 }
 
@@ -211,6 +218,7 @@ int attemptConnect(struct NSNet *ns, const struct NSNetConnectionHandler *nsc,
     nscc->peer = dest;
     nscc->udata = udata;
     nsc->success(udata, nscc);
+
     return 0;
   }
   rassert(retval == -1);
@@ -245,8 +253,15 @@ static char *showFD(sock_t fd, fd_set *readfds, fd_set *writefds, fd_set *errfds
 }
 #endif
 
+static void removeReadHandlerInternal(struct NSNet *ns, struct NSNetReadHandlerInternal *readHI)
+{
+  delInt(ns->readerMap, readHI->fd);
+  free(readHI);
+}
+
 static void removeConnectionHandlerInternal(struct NSNet *ns, struct NSNetConnectionHandlerInternal *connectHI)
 {
+  removeFdAll(ns, connectHI->fd);
   delInt(ns->connectMap, connectHI->fd);
   free(connectHI);
 }
@@ -259,7 +274,7 @@ void waitForNetEvent(struct NSNet *ns, int timeout)
   struct NSNetConnectionController *nscc;
   struct NSNetBindHandlerInternal *bindHI;
   struct NSNetConnectionHandlerInternal *connectHI;
-  //struct NSNetReaderHandlerInternal *readerHI;
+  struct NSNetReadHandlerInternal *readerHI;
   int retval;
   int i;
   readfds = ns->readfds;
@@ -274,12 +289,25 @@ void waitForNetEvent(struct NSNet *ns, int timeout)
     int connErrno, connErrnoLen = sizeof(connErrno);
     for (i = 0; i < ns->max_fd; i+=1)
     {
+      char buf[1024];
+      if (FD_ISSET(i, &readfds) && (readerHI = findInt(ns->readerMap, i))) {
+        int len = read(i, buf, 1024);
+        if (len > 0)
+          readerHI->nsrh.bytesRead(readerHI->udata, buf, len);
+        if (len == 0) {
+          close(i);
+          readerHI->nsrh.closed(readerHI->udata);
+          removeFdAll(ns, i);
+          removeReadHandlerInternal(ns, readerHI);
+        }
+      }
       if (FD_ISSET(i, &readfds) && (bindHI = findInt(ns->bindMap, i))) {
         int addrlen = sizeof(nscc->peer);
         nscc = calloc(sizeof(*nscc), 1);
         nscc->ns = ns;
         nscc->udata = bindHI->udata;
         nscc->fd = accept(i, (struct sockaddr *) &nscc->peer, &addrlen);
+        setNSnonblocking(ns, nscc->fd);
         bindHI->nsb.success(bindHI->udata, nscc);
       }
     }
@@ -293,7 +321,6 @@ void waitForNetEvent(struct NSNet *ns, int timeout)
           {
             case ECONNREFUSED:
               connectHI->nsc.refused(connectHI->udata);
-              removeFdAll(ns, connectHI->fd);
               removeConnectionHandlerInternal(ns, connectHI);
               break;
             case 0:
@@ -302,9 +329,8 @@ void waitForNetEvent(struct NSNet *ns, int timeout)
               nscc->peer = connectHI->dest;
               nscc->fd = connectHI->fd;
               nscc->udata = connectHI->udata;
-              connectHI->nsc.success(connectHI->udata, nscc);
-              removeFdAll(ns, connectHI->fd);
               removeConnectionHandlerInternal(ns, connectHI);
+              connectHI->nsc.success(connectHI->udata, nscc);
               break;
             default:
               printf("Unhandled connErrno: %d\n", connErrno);
@@ -337,6 +363,20 @@ void closeNSNet(struct NSNet *ns)
   freeStringTable(ns->connectMap);
   freeStringTable(ns->readerMap);
   free(ns);
+}
+
+int closeConnection(struct NSNetConnectionController *nscc)
+{
+   close(nscc->fd);
+   return 0;
+}
+
+int writeNSBytes(struct NSNetConnectionController *nscc, void *buf, int len)
+{
+  int writelen = 0;
+  if (len > 0)
+    writelen = write(nscc->fd, buf, len);
+  return (writelen == len) ? 0 : 1;
 }
 
 

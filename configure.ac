@@ -7,6 +7,7 @@ AC_PATH_PROGS([CC], [gcc-3.3 gcc-3.0 gcc])
 AC_SUBST(CC)
 AC_PROG_RANLIB
 AM_CONFIG_HEADER(src/config.h)
+#AC_CONFIG_HEADERS(src/config.h)
 AM_INIT_AUTOMAKE(NeuroServer, 0.7.5)
 WINBUILDDIR="c:\build"
 AC_SUBST(WINBUILDDIR)

@@ -33,7 +33,7 @@ int attemptBind(struct NSNet *ns, const struct NSNetBindHandler *nsb,
 int attemptConnect(struct NSNet *ns, const struct NSNetConnectionHandler *nsc,
                     const char *destaddr, unsigned short destPort, void *udata);
 int attachConnectionReadHandler(struct NSNetConnectionController *nscc,
-    const struct NSNetConnectionReadHandler *nscch);
+    const struct NSNetConnectionReadHandler *nscch, void *udata);
 int writeNSBytes(struct NSNetConnectionController *nscc, void *buf, int len);
 int closeConnection(struct NSNetConnectionController *nscc);
 
