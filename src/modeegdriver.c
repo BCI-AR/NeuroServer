@@ -168,15 +168,15 @@ int doesMatchP3(unsigned char c,  unsigned short *vals,int *nsamples)
 		return 0;
 	}
 	if (2*i < MAXCHANNELS) {
-		switch (j) {
-			case 0: samples[2*i] = (int) c << 3; break;
-			case 1: samples[2*i+1] = (int) c << 3; break;
-			case 2:
-				samples[2*i] += (int)   (c & 0x70) >> 4;
-				samples[2*i+1] += (int) c & 0x07;
-				i += 1;
-				break;
-		}
+       switch (j) {
+           case 0: samples[2*i] = (int) c; break;
+           case 1: samples[2*i+1] = (int) c; break;
+           case 2:
+               samples[2*i] += (int)   (c & 0x70) << 3;
+               samples[2*i+1] += (int) (c & 0x07) << 7;
+               i += 1;
+               break;
+       }
 	}
 	j = (j+1) % 3;
 	if (c & 0x80) {
