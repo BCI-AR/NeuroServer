@@ -35,6 +35,7 @@ void testCommandHandler(void)
   enregisterCommand(ch, "unknown", handleUnknown);
   enregisterCommand(ch, "print", handlePrint);
   handleLine(ch, "what", 3);
+  handleLine(ch, "print 0", 3);
   handleLine(ch, "print 87", 3);
   handleLine(ch, "print \"45\"", 3);
   handleLine(ch, "print \"48\" ", 3);

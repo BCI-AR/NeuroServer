@@ -85,9 +85,13 @@ void enregisterCommand(struct CommandHandler *ch, const char *cmd, void (*func)(
 
 static void replaceCurline(struct ClientState *cs, const char *line)
 {
+  int linelen = strlen(line);
   if (cs->curline)
     free(cs->curline);
-  cs->curline = strdup(line);
+  cs->curline = calloc(strlen(line)+2, 1);
+  memcpy(cs->curline, line, linelen);
+  cs->curline[linelen] = ' ';
+  cs->curline[linelen+1] = 0;
 }
 
 static void addToken(struct ClientState *cs, char *tok)
