@@ -14,6 +14,11 @@ then configure with
 \endcode
 to regenerate the Makefile's.
 
+When compiling, if you get 'attribute_used redefined' warnings, you may
+ignore them without consequence.  If you want to eliminate them, you
+will need to install a newer (>=3) version of gcc; Debian uses the
+package names gcc-3.0 or gcc-3.3.
+
 To create a package, use the command
 \code
 make dist

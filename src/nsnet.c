@@ -1,3 +1,5 @@
+/** \file
+ */
 #include <stdio.h>
 #include <fcntl.h>
 #include <string.h>
@@ -528,5 +530,72 @@ int readline(sock_t fd, char *vptr, size_t maxlen, struct InputBuffer *ib)
 	}
 	*ptr = '\0';
 	return n;
+}
+
+#define MAXHANDLER 1024
+struct FDHandlerEntry {
+	sock_t fd;        /** which stream is associated with this entry **/
+	void (*handler)(void *uobj, const char *data, size_t len); /** block handler **/
+	void *uobj; /** user-defined object **/
+};
+
+struct FDHandlerEntry fdTable[MAXHANDLER]; /** Table of stream handlers **/
+int handlerCount; /** Number of enregistered stream handlers **/
+
+/**
+ * Searches \a fdTable for the given fd in the array.  Returns index if found.
+ * \param fd the fd to search for
+ * \return The index where fd is found, or -1 if not found
+ */
+int findFdIndex(sock_t fd)
+{
+	int i;
+	for (i = 0; i < handlerCount; ++i)
+		if (fdTable[i].fd == fd)
+			return i;
+	return -1;
+}
+
+int makeNewEntryForFD(sock_t fd, void (*handler)(void *uobj, const char *data, size_t len), void *uobj)
+{
+	int newid = handlerCount;
+	handlerCount += 1;
+	if (handlerCount >= MAXHANDLER) {
+		rprintf("Error: ran out of FD table space at %d\n", handlerCount);
+		exit(1);
+	}
+	fdTable[newid].fd = fd;
+	fdTable[newid].handler = handler;
+	fdTable[newid].uobj = uobj;
+	return newid;
+}
+
+int setFdHandler(sock_t fd, void (*handler)(void *uobj, const char *data, size_t len), void *uobj)
+{
+	int id;
+	id = findFdIndex(fd);
+	if (id == -1)
+		id = makeNewEntryForFD(fd, handler, uobj);
+	else {
+		fdTable[id].handler = handler;
+		fdTable[id].uobj = uobj;
+	}
+	return 0;
+}
+
+#define MAXREAD 16384
+int handleReads(sock_t fd)
+{
+	int have_read;
+	char readbuf[MAXREAD];
+	have_read = rrecv(fd, readbuf, MAXREAD);
+	if (have_read > 0) {
+		int id = findFdIndex(fd);
+		if (id != -1 && fdTable[id].handler != NULL) {
+			fdTable[id].handler(fdTable[id].uobj, readbuf, have_read);
+		}
+		// TODO: Handle EOF
+	}
+	return 0;
 }
 
