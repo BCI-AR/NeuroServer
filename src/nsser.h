@@ -29,7 +29,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 #define DEFAULTDEVICE "COM1"
 #include <windows.h>
 #include <winbase.h>
-#define DEFAULT_BAUD CBR_57600
 #define ser_t HANDLE
 #else
 #include <unistd.h>
@@ -40,10 +39,16 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 #define ser_t int
 #endif
 
-/* Pass the device name, if it returns it has succeeded */
-ser_t openSerialPort(const char *devname);
+/*! Pass the device name, if it returns it has succeeded */
+ser_t openSerialPort(const char *devname, unsigned int BaudRate);
 
-/* Returns number of bytes read, or -1 for error */
+/*! Returns number of bytes read, or -1 for error */
 int readSerial(ser_t s, char *buf, int size);
+
+/*! Returns number of bytes written, or -1 for error */
+int writeSerial(ser_t s, char *buf, int size);
+
+/*! sets baudrate and other port options (unix only) */
+int set_port_options(int fd, unsigned int BaudRate);
 
 #endif

@@ -114,20 +114,35 @@ void sendResponseBadRequest(int cliInd)
 }
 
 
-/** command for Controllers: send stiumuls to EEG Client 
+/** command for Controllers: start go trial   
 
-    stimulus 0 activates a stimulus in EEG device 0
+    go 0 activates a go trial (for event related potentials) in EEG device 0
     
  */
-void cmdStimulus(int cliInd)
+void cmdgo(int cliInd)
 {
 	if (clients[cliInd].role == Controller) {
 		int who;
 		fetchParameters(&who, 1);
 		if (who >= 0 && who < clientCount && clients[who].role == EEG) {
-		 	rprintf("Sending stimulus command from %d to %d \n", cliInd,who);
+		 	rprintf("Sending go command from %d to %d \n", cliInd,who);
 			sendResponseOK(cliInd);
-			sendClientMsgNL(who,"stimulus");
+			sendClientMsgNL(who,"go");
+			return;
+		}
+	}
+	sendResponseBadRequest(cliInd);
+}
+
+void cmdnogo(int cliInd)
+{
+	if (clients[cliInd].role == Controller) {
+		int who;
+		fetchParameters(&who, 1);
+		if (who >= 0 && who < clientCount && clients[who].role == EEG) {
+		 	rprintf("Sending nogo command from %d to %d \n", cliInd,who);
+			sendResponseOK(cliInd);
+			sendClientMsgNL(who,"nogo");
 			return;
 		}
 	}
@@ -357,7 +372,8 @@ int main()
 	enregisterCommand("status", cmdStatus);
 	enregisterCommand("role", cmdRole);
 	enregisterCommand("eeg", cmdEEG);
-	enregisterCommand("stimulus", cmdStimulus);
+	enregisterCommand("go", cmdgo);
+	enregisterCommand("nogo", cmdnogo);
 	enregisterCommand("setheader", cmdSetHeader);
 	enregisterCommand("getheader", cmdGetHeader);
 	enregisterCommand("!", cmdDataFrame);
@@ -377,7 +393,7 @@ int main()
 	}
 	rprintf("Socket bound.\n");
 
-	rprintf("Please start the modeegdriver.\n");
+	rprintf("Please start your eeg driver (e.g. modeegdriver). \n");
 
 	for (;;) {
 		time_t now;

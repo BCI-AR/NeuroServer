@@ -8,7 +8,8 @@ EEG data.  The EEG data is sent in an EDF-oriented format, which has
 already been well specified in, for instance,
 <a href=http://www.hsr.nl/edf/edf_spec.htm>here.</a>
 
-(n.b. in this document, \\n denotes a newline character)
+(n.b. in this document, \\n denotes a newline character and \\r a carriage
+return)
 
 The nsd protocol is TCP-based and line-oriented.  By default, the nsd server
 binds to all network addresses and accepts connections on port 8336.  The
@@ -16,12 +17,12 @@ nsd prints no welcome banner when new clients connect.  All
 commands are a single line of text.  For any command, the server
 first returns a line indicating general success or failure:
 \verbatim
-200 OK
+200 OK\\r\\n
 \endverbatim
 is for successful commands, and any other code should be assumed an error.
 At this point, the only error code is
 \verbatim
-400 BAD REQUEST
+400 BAD REQUEST\\r\\n
 \endverbatim
 After the success/failure code, some commands will produce additional
 output.  This output is generally a single line.
@@ -29,11 +30,11 @@ output.  This output is generally a single line.
 Every client that is connected has a current "role" status.  Initially,
 it is set to "Unknown."  There are three other roles that may be
 assumed, with three different commands:
-
--display       to enter Display role
--eeg           to enter EEG role
--control       to enter Controller role
-
+\verbatim
+display       to enter Display role
+eeg           to enter EEG role
+control       to enter Controller role
+\endverbatim
 In order for a client to determine its current role, it can use the
 \verbatim
 role          to print out the current role for this client

@@ -415,7 +415,7 @@ int main(int argc, char **argv)
 	rprintf("Socket connected.\n");
 	fflush(stdout);
 
-	serport = openSerialPort(deviceName);
+	serport = openSerialPort(deviceName,57600);
 	rprintf("Serial port %s opened.\n", deviceName);
 	
 	writeString(sock_fd, "eeg\n", &ob);

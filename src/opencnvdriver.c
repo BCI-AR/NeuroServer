@@ -1,5 +1,5 @@
 /** \file
- * \author Moritz von Buttlar, Rudi Cilibrasi
+ * \author Moritz von Buttlar (moritzvb@users.sf.net), based on the modeegdriver by Rudi Cilibrasi
  *
  * Device driver for the 24bit OpenCNV EEG.
  * 
@@ -12,7 +12,7 @@ A collection of programs to translate between EEG data and TCP network
 messages. This is a part of the OpenEEG project, see http://openeeg.sf.net
 for details.
     
-Copyright (C) 2003, 2004 Rudi Cilibrasi (cilibrar@ofb.net)
+Copyright (C) 2003, 2004 Rudi Cilibrasi (cilibrar@ofb.net) 
      
 This library is free software; you can redistribute it and/or
 modify it under the terms of the GNU Lesser General Public
@@ -311,6 +311,30 @@ void printHelp()
 			
 }
 
+void decodeCommand(char command[MAXLEN],ser_t serport) {
+char writebuf[2];
+
+ if ((command[0]=='g') && (command[1]=='o')) {
+  writebuf[0]='T';
+  writebuf[1]='1';
+  writeSerial(serport,writebuf,2);
+  }
+ 
+ if ((command[0]=='n') && (command[1]=='o') && (command[2]=='g') && (command[3]=='o')) {
+  writebuf[0]='T';
+  writebuf[1]='3';
+  writeSerial(serport,writebuf,2);
+  }
+  
+  
+ if ((command[0]=='2') && (command[1]=='0') && (command[2]=='0') ) {
+//  rprintf("OK\n");
+ }
+ else {
+  rprintf("not OK: %c %c %c \n",command[0],command[1],command[2]);
+ }
+}
+
 
 int main(int argc, char **argv)
 {
@@ -328,8 +352,11 @@ int main(int argc, char **argv)
 	unsigned short portno = 0;
 	struct timeval  when;
 	
-        char linebuf[MAXLEN+1];
+        char linebuf[MAXLEN+1];	// fifo command buffer
+        int writepos = 0;        
+        int readpos = 0;
         int len;
+        unsigned int lpos = 0;
 	
 	rprintf("OpenCNV Driver v. %s-%s\n", VERSION, OSTYPESTR);
 
@@ -397,11 +424,8 @@ int main(int argc, char **argv)
 	rprintf("Socket connected.\n");
 	fflush(stdout);
 
-	serport = openSerialPort(deviceName);			
+	serport = openSerialPort(deviceName,115200);			
 	rprintf("Serial port %s opened.\n", deviceName);
-
-/// Set baudrate somehow ?
-
 	writeString(sock_fd, "eeg\n", &ob);	/// now start talking with the nsd
 	mGetOK(sock_fd, &ib);
 	writeString(sock_fd, "setheader ", &ob);
@@ -438,23 +462,30 @@ int main(int argc, char **argv)
 			for (i = 0; i < readSerBytes; ++i)
 				eatCharacter(smallbuf[i]);    /// process serial port input data
 		}
-							      /// code to send commands from server to eeg
-		if (FD_ISSET(sock_fd, &toread)) {
-			my_read(sock_fd, responseBuf, MAXLEN, &ib);
+/// code to get commands from server 
+		if ( (FD_ISSET(sock_fd, &toread)) && (ib.read_cnt<=0) ) { 	// did we get any new network data ? yes !
+			my_read(sock_fd, responseBuf, MAXLEN, &ib); // get data into input buffer
+			len=0;
+			for (i=0;i<ib.read_cnt;i++) {
+			 linebuf[writepos]=ib.read_buf[i];
+			 if (linebuf[writepos]=='\n') {
+			  decodeCommand(linebuf,serport);
+			  writepos=0;
+			  }
+			 else {
+			  writepos++;
+			 }
+			 if (writepos>=256) writepos=0;
+			}
+			ib.read_cnt=0;
 		}
+		
 
 		if (isEOF(sock_fd, &ib)) {
 					rprintf("Server died, exitting.\n");
 					exit(0);
 		}
 		
-//		len = readline(sock_fd, linebuf, MAXLEN, &ib);
-//		if (len > 0 && isEOF(sock_fd, &ib)) {
-//		 linebuf[len] = '\0';
-//		 rprintf("Got response/command: <%s>\n", linebuf);
-//		 strtok(linebuf, " ");
- 
-//		}
 	}
 
 	return 0;

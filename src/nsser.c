@@ -1,4 +1,4 @@
-/*
+/*!  \brief serial port communication for eeg devices 
 NeuroServer
  
 A collection of programs to translate between EEG data and TCP network
@@ -28,22 +28,22 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 #include "nsutil.h"
 #include "nsser.h"
 
-void set_port_options(int fd);
 
-ser_t openSerialPort(const char *devname)
+
+ser_t openSerialPort(const char *devname, unsigned int BaudRate)
 {
 #ifdef __MINGW32__
 	ser_t retval;
 	retval = CreateFile(devname,
--~-~-~      GENERIC_READ | GENERIC_WRITE,
--~-~-~      0, NULL, OPEN_EXISTING,
--~-~-~      FILE_ATTRIBUTE_NORMAL, NULL);
+        GENERIC_READ | GENERIC_WRITE,
+	0, NULL, OPEN_EXISTING,
+	    FILE_ATTRIBUTE_NORMAL, NULL);
 	if (retval == INVALID_HANDLE_VALUE) {
--~  rprintf("Couldn't open serial port: %s", devname);
+    	 rprintf("Couldn't open serial port: %s", devname);
 		rexit(1);
 	}
 	if (!SetCommMask(retval, EV_RXCHAR))
--~	rprintf("Couldn't do a SetCommMask(): %s", devname);
+	rprintf("Couldn't do a SetCommMask(): %s", devname);
 
 	// Set read buffer == 10K, write buffer == 4K
 	SetupComm(retval, 10240, 4096);
@@ -52,10 +52,14 @@ ser_t openSerialPort(const char *devname)
 	DCB dcb;
 
 	dcb.DCBlength= sizeof(DCB);
-GetCommState(retval, &dcb);
-
-		dcb.BaudRate= DEFAULT_BAUD;
-		dcb.ByteSize= 8;
+	GetCommState(retval, &dcb);
+	switch(BaudRate) {
+	 case 19200: dcb.BaudRate=CBR_19200;break;
+	 case 57600: dcb.BaudRate=CBR_57600;break;
+	 case 115200: dcb.BaudRate=CBR_115200;break;
+	 default: dcb.BaudRate=CBR_57600;
+	} 
+	        dcb.ByteSize= 8;
 		dcb.Parity= NOPARITY;
 		dcb.StopBits= ONESTOPBIT;
 		dcb.fOutxCtsFlow= FALSE;
@@ -85,7 +89,7 @@ GetCommState(retval, &dcb);
 		}
 	else
 		fcntl(fd, F_SETFL, FNDELAY);
-	set_port_options(fd);
+	set_port_options(fd,BaudRate);
 	return (fd);
 #endif
 }
@@ -126,7 +130,18 @@ int readSerial(ser_t s, char *buf, int size)
 	return retval;
 }
 
-void set_port_options(int fd)
+/// \todo add write serial for windows and test it
+
+int writeSerial(ser_t s, char *buf, int size)
+{
+	int retval;
+	retval = write(s, buf, size);
+	if (retval < 0)
+		retval = 0;
+	return retval;
+}
+
+int set_port_options(int fd, unsigned int BaudRate)
 {
 	int retval;
 	struct termios options;
@@ -140,9 +155,14 @@ void set_port_options(int fd)
 /*
  *      * Set the baud rates to 19200...
  *      */
+	switch(BaudRate) {
+	 case 19200:  cfsetispeed(&options, B19200);cfsetospeed(&options, B19200);break;
+	 case 57600:  cfsetispeed(&options, B57600);cfsetospeed(&options, B57600);break;
+	 case 115200:  cfsetispeed(&options, B115200);cfsetospeed(&options, B115200);break;
+	 default: cfsetispeed(&options, B57600);cfsetospeed(&options, B57600);
+	} 
+   
 
-    cfsetispeed(&options, B115200);
-    cfsetospeed(&options, B115200);
 
 /*
  *      * Enable the receiver and set local mode...
@@ -171,6 +191,7 @@ options.c_cflag |= CS8;
  *      */
 
 	retval = tcsetattr(fd, TCSANOW, &options);
+	return retval;
 }
 #endif
 
