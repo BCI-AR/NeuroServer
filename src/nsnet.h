@@ -1,6 +1,8 @@
 #ifndef __NSNET_H
 #define __NSNET_H
 
+/** \file
+ */
 #include <nsutil.h>
 
 #define CHUNKSIZE 256
@@ -67,5 +69,6 @@ size_t readn(sock_t fd, void *vptr, size_t len, struct InputBuffer *ib);
 int rselect(sock_t max_fd, fd_set *read, fd_set *write, fd_set *err);
 int rselect_timed(sock_t max_fd, fd_set *toread, fd_set *towrite, 
 	fd_set *toerr, struct timeval *tv);
+int findFdIndex(sock_t fd); // Searches for a given socket \param fd in the handler table, \a fdTable, returning index or -1 if not found
 
 #endif

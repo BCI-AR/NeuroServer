@@ -583,6 +583,18 @@ int setFdHandler(sock_t fd, void (*handler)(void *uobj, const char *data, size_t
 	return 0;
 }
 
+int removeFdHandler(sock_t fd)
+{
+	int id;
+	id = findFdIndex(fd);
+	if (id == -1)
+		return 1;
+	if (id < handlerCount-1)
+		memmove(&fdTable[id], &fdTable[id+1], (handlerCount-id-1) * sizeof(fdTable[0]));
+	handlerCount -= 1;
+	return 0;
+}
+
 #define MAXREAD 16384
 int handleReads(sock_t fd)
 {
