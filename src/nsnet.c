@@ -23,6 +23,12 @@ const char *stringifyErrorCode(int code)
 		case WSAECONNRESET:
 			return "WSAECONNRESET";
 			break;
+		case WSAECONNREFUSED:
+			return "WSAECONNREFUSED";
+			break;
+		case WSAECONNABORTED:
+			return "WSAECONNABORTED";
+			break;
 		case WSAENOTSOCK:
 			return "WSAENOTSOCK";
 			break;
@@ -271,7 +277,6 @@ int writeBytes(sock_t con, const char *buf, int size, struct OutputBuffer *ob)
 			rprintf("Error code: %s\n", stringifyErrorCode(winerr));
 		} while (0);
 #endif
-		assert(0);
 	}
 	return retval;
 }
@@ -289,15 +294,21 @@ void initInputBuffer(struct InputBuffer *ib)
 size_t my_read(sock_t fd, char *ptr, struct InputBuffer *ib)
 {
 	//setblocking(fd);
+	again:
 	if (ib->read_cnt <= 0) {
-			again:
 			if ( (ib->read_cnt = rrecv(fd, ib->read_buf, MAXLEN)) < 0) {
 #ifdef __MINGW32__
 				int winerr;
 				winerr = WSAGetLastError();
+				if (winerr == WSAECONNABORTED || winerr == WSAECONNRESET) {
+					ib->isEOF = 1;
+					return -1;
+				}
+				if (winerr == WSAEWOULDBLOCK) goto again;
 				rprintf("Got my_read error %s\n", stringifyErrorCode(winerr));
-#endif
 //				if (winerr == WSAESHUTDOWN || winerr == WSAENOTCONN || winerr == WSAECONNRESET)
+#else
+#endif
 				return -1;
 			} else {
 				if (ib->read_cnt == 0) {
@@ -398,6 +409,8 @@ int getOK(sock_t sock_fd, struct InputBuffer *ib)
 	do {
 		retcode = getResponseCode(sock_fd, ib);
 	} while (retcode == 0);
+
+//	printf("getOK retcode now %d\n", retcode);
 		
 	if (retcode != 200) {
 		printf("Got bad response: %d\n", retcode);

@@ -19,7 +19,6 @@ static int failCount = 0;
 static struct OutputBuffer ob;
 static struct InputBuffer ib;
 
-
 int hasMatchedProtocol;
 int isP2, isP3;
 int isValidPacket(unsigned short nchan, unsigned short *samples);
@@ -108,7 +107,6 @@ void eatCharacter(unsigned char c)
 		}
 	}
 	if (didMatch) {
-		int i;
 		char *pstr = "xx";
 		if (!isValidPacket(ns, vals)) {
 			rprintf("Warning: invalid serial packet ahead!\n");
@@ -292,6 +290,7 @@ int main(int argc, char **argv)
 		perror("socket");
 		rexit(1);
 	}
+	setblocking(sock_fd);
 
 	retval = rconnectName(sock_fd, hostname, portno);
 	if (retval != 0) {

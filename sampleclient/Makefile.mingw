@@ -1,0 +1,45 @@
+all: sampleclient
+OBJDIR=../src
+INCDIR=../src
+
+%.o: %.c
+	gcc $< -c -g -Wall -I. -mms-bitfields
+
+sampleclient: main.c $(OBJDIR)/nsnet.o $(OBJDIR)/nsutil.o $(OBJDIR)/pctimer.o $(OBJDIR)/openedf.o
+	gcc -Wall $(OBJDIR)/nsnet.o $(OBJDIR)/nsutil.o $(OBJDIR)/pctimer.o $(OBJDIR)/openedf.o main.c -o $@      \
+			 -I$(INCDIR) -mms-bitfields \
+	    -I/c/Dev-C++/lib/gtkmm-2.0/include \
+	    -I/c/Dev-C++/include/gtk-2.0 \
+	    -I/c/Dev-C++/lib/sigc++-1.2/include \
+	    -I/c/Dev-C++/include/sigc++-1.2 \
+	    -I/c/Dev-C++/include/glib-2.0 \
+	    -I/c/Dev-C++/lib/glib-2.0/include \
+	    -I/c/Dev-C++/lib/gtk-2.0/include \
+	    -I/c/Dev-C++/include/pango-1.0 -I/c/Dev-C++/include/atk-1.0 \
+	    -L/c/Dev-C++/lib    \
+	    -lgtk-win32-2.0 \
+	    -lgdk-win32-2.0 -latk-1.0 -lgdk_pixbuf-2.0 -lpangowin32-1.0 \
+	    -lgdi32 -lpango-1.0 -lgobject-2.0 -lgmodule-2.0 -lglib-2.0 \
+	    -lintl -liconv -lwsock32
+
+
+#-lgdkmm-2.0 -lgtkmm-2.0    -I/c/Dev-C++/include/gtkmm-2.0 \
+ # -latkmm-1.0 \
+# -lpangomm-1.0 \
+#-lglibmm-2.0 -lsigc-1.2 \
+
+
+writeedf: openedf.o writeedf.o nsutil.o pctimer.o nsnet.o
+	gcc -o writeedf.exe openedf.o writeedf.o nsutil.o pctimer.o nsnet.o -lwsock32 -Wall -g
+
+readedf: openedf.o readedf.o nsutil.o pctimer.o nsnet.o
+	gcc -o readedf.exe openedf.o readedf.o nsutil.o pctimer.o nsnet.o -lwsock32 -Wall
+
+nsd: nsd.o nsser.o nsutil.o nsnet.o cmdhandler.o openedf.o
+	gcc -o nsd.exe nsnet.o nsser.o nsutil.o nsd.o cmdhandler.o openedf.o -lwsock32 -Wall
+
+modeegdriver: modeegdriver.o nsser.o nsutil.o nsnet.o openedf.o
+	gcc -o modeegdriver.exe nsnet.o nsser.c nsutil.o modeegdriver.o openedf.o -lwsock32 -Wall
+
+clean:
+	rm modeegdriver.exe nsd.exe *.o

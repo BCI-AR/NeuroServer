@@ -14,6 +14,24 @@ then configure with
 
 to regenerate the Makefile's.
 
-
 To create a package, use the command
 make dist
+
+MinGW / MSYS specific instructions:
+In order to build under MinGW/MSYS, use commands like the following:
+First, use the three commands listed above on a Linux machine to
+generate an "configure" script, or download a prepackaged
+neuroserver distribution.
+
+./configure
+then go into src/
+cd src/
+make -f Makefile.mingw
+If this builds fine then you can try the sampleClient
+cd ../sampleclient
+make -f Makefile.mingw
+
+Note that these Makefile's assume you have the following installed:
+MinGW
+MSYS
+Dropline GTK binaries in default install location: C:/Dev-C++/

@@ -352,9 +352,8 @@ int main()
 			if (!inputBufferEmpty(&clients[i].ib) || FD_ISSET(clients[i].fd, &toread)) {
 				int j;
 				do {
-					char c;
 					j = readline(clients[i].fd, lineBuf, MAXLEN, &clients[i].ib);
-					if (j == -1 || isEOF(clients[i].fd, &clients[i].ib)) {
+					if (isEOF(clients[i].fd, &clients[i].ib)) {
 						clients[i].markedForDeletion = 1;
 						rprintf("Got EOF from client %d\n", i);
 						break;

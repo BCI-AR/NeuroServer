@@ -3,7 +3,9 @@
 #include <assert.h>
 #include "nsutil.h"
 
-#ifndef __MINGW32__
+#ifdef __MINGW32__
+#include <windows.h>
+#else
 #include <unistd.h>
 #endif
 

@@ -107,6 +107,7 @@ int main(int argc, char **argv)
 		perror("socket");
 		rexit(1);
 	}
+	rprintf("Got socket.\n");
 
 	retval = rconnectName(sock_fd, opts.hostname, opts.port);
 	if (retval != 0) {
@@ -115,7 +116,6 @@ int main(int argc, char **argv)
 	}
 
 	rprintf("Socket connected.\n");
-	fflush(stdout);
 
 	writeString(sock_fd, "display\n", &ob);
 	getOK(sock_fd, &ib);

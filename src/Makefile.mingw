@@ -1,0 +1,25 @@
+all: nsd modeegdriver readedf writeedf
+
+%.o: %.c
+	gcc $< -c -g -Wall -I. -mms-bitfields
+
+#-lgdkmm-2.0 -lgtkmm-2.0    -I/c/Dev-C++/include/gtkmm-2.0 \
+ # -latkmm-1.0 \
+# -lpangomm-1.0 \
+#-lglibmm-2.0 -lsigc-1.2 \
+
+
+writeedf: openedf.o writeedf.o nsutil.o pctimer.o nsnet.o
+	gcc -o writeedf.exe openedf.o writeedf.o nsutil.o pctimer.o nsnet.o -lwsock32 -Wall -g
+
+readedf: openedf.o readedf.o nsutil.o pctimer.o nsnet.o
+	gcc -o readedf.exe openedf.o readedf.o nsutil.o pctimer.o nsnet.o -lwsock32 -Wall
+
+nsd: nsd.o nsser.o nsutil.o nsnet.o cmdhandler.o openedf.o
+	gcc -o nsd.exe nsnet.o nsser.o nsutil.o nsd.o cmdhandler.o openedf.o -lwsock32 -Wall
+
+modeegdriver: modeegdriver.o nsser.o nsutil.o nsnet.o openedf.o
+	gcc -o modeegdriver.exe nsnet.o nsser.c nsutil.o modeegdriver.o openedf.o -lwsock32 -Wall
+
+clean:
+	rm modeegdriver.exe nsd.exe *.o
