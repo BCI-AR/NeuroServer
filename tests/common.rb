@@ -8,10 +8,12 @@
 
 require 'socket'
 
-@verbose = true
+@verbose = false
 @con = nil
 @history = [ ]
 @testname = nil
+
+EDFHDR = "0                                                                                                                                                                       25.01.0417.40.51768     NEUROSD                                     -1      1       2   Elec 00         Elec 01         Active Electrode                                                                Active Electrode                                                                uV      uV           0       0   1023    1023        0       0   1023    1023   HP: DC; LP:  49 Hz                                                              HP: DC; LP:  49 Hz                                                              2048    2048    Reserved                        Reserved                        "
 
 def clearHistory()
 	@history = [ ]
@@ -37,29 +39,31 @@ end
 def failedTest()
 	puts "Test #{@testname} FAILED"
 	@history.each { |h|
-		puts format("%30s %30s", h[0], h[1])
+		puts h.join(',')
 	}
 	exit(1)
 end
 
 def getResponse()
 	result = getLine()
-	result.chomp!
-	@history[-1] << result
+	if result
+		result.chomp!
+		@history[-1] << result
+	end
 	result
 end
 
 def getLine()
 	result = @con.gets
-	result.chomp!
-	puts result if (@verbose)
+	result.chomp! if result
+	puts "got response line:<#{result}>" if (@verbose)
 	result
 end
 
 def shouldBe(str)
 	got = getLine
 	if got != str
-		puts "got <#{got}> but should be <#{str}>"
+		puts "ERROR got <#{got}> but should be <#{str}>"
 		failedTest
 	end
 end
@@ -135,10 +139,55 @@ def doTest03()
 	finishedTest()
 end
 
+def doTest04()
+	beginTest("04-eeg!")
+	connectToServer()
+	sendCommand("eeg")
+	getOK()
+	sendCommand("setheader #{EDFHDR}")
+	getOK()
+	sendCommand("! 0 2 15 41")
+	getOK()
+	sendCommand("close")
+	getOK()
+	finishedTest()
+end
+
+def doTest05()
+	beginTest("05-watch")
+	connectToServer()
+	eegCon = @con
+	sendCommand("eeg")
+	getOK()
+	connectToServer()
+	displayCon = @con
+	sendCommand("display")
+	getOK()
+	@con = eegCon
+	sendCommand("setheader #{EDFHDR}")
+	getOK()
+	@con = displayCon
+	sendCommand("watch 0")
+	getOK()
+	@con = eegCon
+	sendCommand("! 0 2 15 41")
+	getOK()
+	sendCommand("close")
+	getOK()
+	@con = displayCon
+	shouldBe("! 0 0 2 15 41")
+	sendCommand("close")
+# TODO: Figure out why this response is not coming in
+#	getOK()
+	finishedTest()
+end
+
 def doTests()
 	doTest01()
 	doTest02()
 	doTest03()
+	doTest04()
+	doTest05()
 end
 
 doTests()
