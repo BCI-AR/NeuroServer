@@ -30,10 +30,29 @@ struct StringTable *newStringTable(void)
   return st;
 }
 
+static const char *makeStringFromInt(int key)
+{
+  static char buf[16];
+  sprintf(buf, "%d", key);
+  return buf;
+}
+
+int stringToInt(const char *str)
+{
+  int result;
+  sscanf(str, "%d", &result);
+  return result;
+}
+
 static int compare(const void *a, const void *b)
 {
   const char *ca = *(const char **) a, *cb = * (const char **) b;
   return strcmp(ca, cb);
+}
+
+int putInt(struct StringTable *st, int key, void *val)
+{
+  return putString(st, makeStringFromInt(key), val);
 }
 
 int putString(struct StringTable *st, const char *key, void *val)
@@ -54,6 +73,11 @@ int putString(struct StringTable *st, const char *key, void *val)
   return 0;
 }
 
+int delInt(struct StringTable *st, int key)
+{
+  return delString(st, makeStringFromInt(key));
+}
+
 int delString(struct StringTable *st, const char *key)
 {
   struct StringTableNode *result;
@@ -67,6 +91,11 @@ int delString(struct StringTable *st, const char *key)
   free(toFree);
   free(result);
   return 0;
+}
+
+void *findInt(struct StringTable *st, int key)
+{
+  return findString(st, makeStringFromInt(key));
 }
 
 void *findString(struct StringTable *st, const char *key)

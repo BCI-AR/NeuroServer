@@ -15,6 +15,11 @@ struct NSNetConnectionHandler {
   NSNetFunc unknownHost;
 };
 
+struct NSNetBindHandler {
+  NSNetSuccessFunc success;
+  NSNetFunc error;
+};
+
 struct NSNetConnectionControlHandler {
   NSNetFunc closed;
   NSNetReadFunc bytesRead;
@@ -23,8 +28,10 @@ struct NSNetConnectionControlHandler {
 struct NSNet *newNSNet(void);
 void waitForNetEvent(struct NSNet *ns, int timeout);
 void closeNSNet(struct NSNet *ns);
+int attemptBind(struct NSNet *ns, const struct NSNetBindHandler *nsb,
+                int isLocalOnly, unsigned short portNum, void *udata);
 int attemptConnect(struct NSNet *ns, const struct NSNetConnectionHandler *nsc,
-                    const char *destaddr, int destPort, void *udata);
+                    const char *destaddr, unsigned short destPort, void *udata);
 
 int attachConnectionControlHandler(struct NSNetConnectionController *nscc,
     const struct NSNetConnectionControlHandler *nscch);

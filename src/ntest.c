@@ -4,7 +4,12 @@
 #include <string.h>
 #include <search.h>
 
-struct NSCounter { int success, timedOut, refused, unknownHost; };
+struct NSCounter { int success, timedOut, refused, unknownHost, bindSuccess, bindError; };
+
+static void NSBHBindError(void *udata) {
+  struct NSCounter *count = (struct NSCounter *) udata;
+  count->bindError += 1;
+}
 
 static void NSCHUnknownHost(void *udata) {
   struct NSCounter *count = (struct NSCounter *) udata;
@@ -21,32 +26,53 @@ static void NSCHRefused(void *udata) {
   count->refused += 1;
 }
 
+static void NSBHBindSuccess(void *udata, struct NSNetConnectionController *nscc) {
+  struct NSCounter *count = (struct NSCounter *) udata;
+  count->bindSuccess += 1;
+}
+
 static void NSCHSuccess(void *udata, struct NSNetConnectionController *nscc) {
   struct NSCounter *count = (struct NSCounter *) udata;
   count->success += 1;
 }
 
 static void testNSConnect(void) {
+  int portNum = 7211;
   struct NSCounter basic = { 0, 0, 0 };
   struct NSCounter cur;
   struct NSNetConnectionHandler nsch;
+  struct NSNetBindHandler nsbh;
   struct NSNet *ns;
+
   nsch.success = NSCHSuccess;
   nsch.timedOut = NSCHTimedOut;
   nsch.refused = NSCHRefused;
   nsch.unknownHost = NSCHUnknownHost;
+
+  nsbh.success = NSBHBindSuccess;
+  nsbh.error = NSBHBindError;
+
   cur = basic;
   ns = newNSNet();
   attemptConnect(ns, &nsch, "notAValidHostName", 5555, &cur);
   rassert(cur.success == 0 && cur.unknownHost == 1 && cur.refused == 0 && cur.timedOut == 0);
   cur = basic;
-  rassert(attemptConnect(ns, &nsch, "localhost", 5555, &cur));
+  rassert(0 == attemptConnect(ns, &nsch, "localhost", 5555, &cur));
   waitForNetEvent(ns, 2000);
   rassert(cur.success == 0 && cur.unknownHost == 0 && cur.refused == 1 && cur.timedOut == 0);
   cur = basic;
-  rassert(attemptConnect(ns, &nsch, "localhost", 22, &cur));
+  rassert(0 == attemptBind(ns, &nsbh, 1, portNum, &cur));
+  rassert(cur.bindSuccess == 0 && cur.bindError == 0);
+  rassert(0 == attemptConnect(ns, &nsch, "localhost", portNum, &cur));
   waitForNetEvent(ns, 1000);
   rassert(cur.success == 1 && cur.unknownHost == 0 && cur.refused == 0 && cur.timedOut == 0);
+  rassert(cur.bindSuccess == 1 && cur.bindError == 0);
+  cur = basic;
+  rassert(0 == attemptBind(ns, &nsbh, 0, portNum+1, &cur));
+  rassert(cur.bindSuccess == 0 && cur.bindError == 0);
+  rassert(0 == attemptConnect(ns, &nsch, "localhost", portNum+1, &cur));
+  waitForNetEvent(ns, 1000);
+  rassert(cur.bindSuccess == 1 && cur.bindError == 0);
 }
 
 static void testNSNet(void)
