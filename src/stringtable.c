@@ -1,9 +1,8 @@
 #include <neuro/stringtable.h>
 #include <assert.h>
 #include <malloc.h>
+#include <search.h>
 #include <string.h>
-
-#define INITSIZE 10
 
 struct StringTableNode {
   char *key;
@@ -11,107 +10,92 @@ struct StringTableNode {
 };
 
 struct StringTable {
-  int allocSize, usedSize;
-  int freeHoles;
-  struct StringTableNode *tab;
+  void *stringTableNodeTab;
 };
 
 struct StringTable *newStringTable(void)
 {
   struct StringTable *st;
   st = calloc(sizeof(struct StringTable), 1);
-  st->allocSize = INITSIZE;
-  st->usedSize = 0;
-  st->freeHoles = 0;
-  st->tab = calloc(sizeof(struct StringTableNode), st->allocSize);
   return st;
 }
 
-static int findIndex(struct StringTable *st, const char *key)
+static int compare(const void *a, const void *b)
 {
-  int i;
-  assert(key);
-  for (i = 0; i < st->usedSize; i += 1) {
-    if (st->tab[i].key == NULL) continue;
-    if (strcmp(st->tab[i].key, key) == 0)
-      return i;
-  }
-  return -1;
-}
-
-static int getFreeHoleIndex(struct StringTable *st)
-{
-  int i;
-  assert(st->freeHoles > 0);
-  for (i = 0; i < st->usedSize; ++i) {
-    if (st->tab[i].key == NULL) {
-      st->freeHoles -= 1;
-      return i;
-    }
-  }
-  assert(0 && "StringTable free hole error.");
-  return -1;
-}
-
-static int getFreeIndex(struct StringTable *st)
-{
-  if (st->freeHoles)
-    return getFreeHoleIndex(st);
-  if (st->usedSize < st->allocSize) {
-    st->usedSize += 1;
-    return st->usedSize - 1;
-  }
-  st->allocSize *= 2;
-  st->tab = realloc(st->tab, sizeof(struct StringTableNode)*st->allocSize);
-  return getFreeIndex(st);
+  const char *ca = *(const char **) a, *cb = * (const char **) b;
+  return strcmp(ca, cb);
 }
 
 int putString(struct StringTable *st, const char *key, void *val)
 {
-  int ind = findIndex(st, key);
-  if (ind == -1) {
-    ind = getFreeIndex(st);
-    st->tab[ind].key = strdup(key);
+  struct StringTableNode *result;
+  result = (struct StringTableNode *)
+           tfind(&key, &st->stringTableNodeTab, compare);
+  if (result == NULL) {
+    result = calloc(sizeof(*result), 1);
+    result->key = strdup(key);
+    result->val = val;
+    tsearch(result, &st->stringTableNodeTab, compare);
   }
-  st->tab[ind].val = val;
+  else
+    result->val = val;
   return 0;
 }
 
 int delString(struct StringTable *st, const char *key)
 {
-  int ind = findIndex(st, key);
-  if (ind == -1) return ERR_NOSTRING;
-  free(st->tab[ind].key);
-  st->tab[ind].key = NULL;
-  st->freeHoles += 1;
+  struct StringTableNode *result;
+  char *toFree;
+  result = (struct StringTableNode *)
+           tfind(&key, &st->stringTableNodeTab, compare);
+  if (result == NULL) return ERR_NOSTRING;
+  toFree = result->key;
+  tdelete(&key, &st->stringTableNodeTab, compare);
+  free(toFree);
   return 0;
 }
 
 void *findString(struct StringTable *st, const char *key)
 {
-  int ind = findIndex(st, key);
-  return (ind == -1) ? NULL : st->tab[ind].val;
+  struct StringTableNode **result;
+  result = (struct StringTableNode **)
+           tfind(&key, &st->stringTableNodeTab, compare);
+  return (result == NULL) ? NULL : (*result)->val;
 }
+
+static void *audata;
+static StringTableIterator asti;
+static struct StringTable *ast;
+
+static void allFunc(const void *nodep, const VISIT which, const int depth)
+{
+  struct StringTableNode *result;
+  if (which != endorder && which != leaf) return;
+  result = *(struct StringTableNode **) nodep;
+  asti(ast, result->key, result->val, audata);
+}
+
+static void freeFunc(void *nodep)
+{
+  struct StringTableNode *result;
+  result = (struct StringTableNode *) nodep;
+  free(result->key);
+  free(result);
+}
+
 
 void allStrings(struct StringTable *st, StringTableIterator sti, void *udata)
 {
-  int i;
-  for (i = 0; i < st->usedSize; i += 1) {
-    if (st->tab[i].key != NULL)
-      sti(st, st->tab[i].key, st->tab[i].val, udata);
-  }
+  audata = udata;
+  asti = sti;
+  ast = st;
+  twalk(st->stringTableNodeTab, allFunc);
 }
 
 void freeStringTable(struct StringTable *st)
 {
-  int i;
-  for (i = 0; i < st->usedSize; i += 1) {
-    if (st->tab[i].key != NULL) {
-      free(st->tab[i].key);
-      st->tab[i].key = NULL;
-    }
-  }
-  free(st->tab);
+  tdestroy(st->stringTableNodeTab, freeFunc);
+  st->stringTableNodeTab = NULL;
   free(st);
 }
 

@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <neuro/ns2net.h>
 #include <string.h>
+#include <search.h>
 
 struct NSCounter { int success, timedOut, refused, unknownHost; };
 
@@ -20,7 +21,7 @@ static void NSCHRefused(void *udata) {
   count->refused += 1;
 }
 
-static void NSCHSuccess(void *udata) {
+static void NSCHSuccess(void *udata, struct NSNetConnectionController *nscc) {
   struct NSCounter *count = (struct NSCounter *) udata;
   count->success += 1;
 }
@@ -57,19 +58,38 @@ static void testNSNet(void)
   }
 }
 
+static int allSum = 0;
+static void allStringTester
+  (struct StringTable *st, const char *key, void *val, void *udata)
+{
+  allSum += key[0] - '0';
+}
+
 static void testStringTable(void)
 {
   int val;
   struct StringTable *st;
-  st = newStringTable();
-  rassert(st);
-  rassert(putString(st, "cat", &val) == 0);
-  rassert(findString(st, "cat") == &val);
-  rassert(findString(st, "dog") == NULL);
-  rassert(delString(st, "dog") == ERR_NOSTRING);
-  rassert(delString(st, "cat") == 0);
-  rassert(findString(st, "cat") == NULL);
-  freeStringTable(st);
+  int i;
+  for (i = 0; i < 1000000; i += 1) {
+    st = newStringTable();
+    rassert(st);
+    rassert(findString(st, "dog") == NULL);
+    rassert(putString(st, "cat", &val) == 0);
+    rassert(findString(st, "cat") == &val);
+    rassert(delString(st, "dog") == ERR_NOSTRING);
+    rassert(delString(st, "cat") == 0);
+    rassert(findString(st, "cat") == NULL);
+    rassert(putString(st, "1", &val) == 0);
+    rassert(putString(st, "2", &val) == 0);
+    rassert(putString(st, "3", &val) == 0);
+    allSum = 0;
+    allStrings(st, allStringTester, NULL);
+    rassert(allSum == 6);
+    rassert(delString(st, "1") == 0);
+    rassert(delString(st, "3") == 0);
+    rassert(delString(st, "2") == 0);
+    freeStringTable(st);
+  }
 }
 
 static const char *gotParm;
@@ -99,6 +119,7 @@ static void testCommandHandler(void)
   handleLine(ch, "what", 3);
   rassert(gotUnknown == 1);
   handleLine(ch, "print 0", 3);
+  rassert(gotParm != NULL);
   rassert(strcmp(gotParm, "0") == 0);
   rassert(gotInt == 0);
   handleLine(ch, "print \"\"", 3);

@@ -11,10 +11,16 @@
 #include <neuro/ns2net.h>
 
 
+struct NSNetConnectionController {
+  struct NSNet *ns;
+  sock_t fd;
+};
+
 struct NSNetConnectionHandlerInternal {
   sock_t fd;
   rsockaddr_t dest;
   struct NSNetConnectionHandler nsc;
+  struct NSNetConnectionController nscc;
   void *udata;
 };
 
@@ -106,7 +112,10 @@ int attemptConnect(struct NSNet *ns, const struct NSNetConnectionHandler *nsc,
   retval = connect(fd, (struct sockaddr *) &dest, sizeof(dest));
   if (retval == -1) connErrno = errno;
   if (retval == 0) {
-    nsc->success(udata);
+    struct NSNetConnectionController *nscc = calloc(sizeof(*nscc), 1);
+    nscc->ns = ns;
+    nscc->fd = fd;
+    nsc->success(udata, nscc);
     return 0;
   }
   rassert(retval == -1);
@@ -162,6 +171,7 @@ void waitForNetEvent(struct NSNet *ns, int timeout)
       {
         if (getsockopt(ns->nsci[i].fd, SOL_SOCKET, SO_ERROR, &connErrno, &connErrnoLen) == 0) 
         {
+        struct NSNetConnectionController *nscc;
           switch(connErrno)
           {
             case ECONNREFUSED:
@@ -169,7 +179,10 @@ void waitForNetEvent(struct NSNet *ns, int timeout)
               removeFdAll(ns, ns->nsci[i].fd);
               break;
             case 0:
-              ns->nsci[i].nsc.success(ns->nsci[i].udata);
+              nscc = calloc(sizeof(*nscc), 1);
+              nscc->ns = ns;
+              nscc->fd = ns->nsci[i].fd;
+              ns->nsci[i].nsc.success(ns->nsci[i].udata, nscc);
               removeFdAll(ns, ns->nsci[i].fd);
               break;
             default:
