@@ -73,8 +73,8 @@ For instance,
 Means a sample frame with 2 channels and packet counter 45, with
 two data channels: 123 is sampled from one, and 125 from the other.
 
-In order to view data, a Display role must be used.  Display's have
-the option to use the watch and unwatch commands:
+In order to view data, a Display role must be used.  A Display can
+use the watch, unwatch, and getheader commands.
 
 watch <clientIndex>
 
