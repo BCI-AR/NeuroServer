@@ -14,12 +14,13 @@
 #include <assert.h>
 #include <time.h>
 #include <ctype.h>
-#include <stdio.h>   /* Standard input/output definitions */
-#include <string.h>  /* String function definitions */
-#include <unistd.h>  /* UNIX standard function definitions */
-#include <fcntl.h>   /* File control definitions */
-#include <errno.h>   /* Error number definitions */
-#include <termios.h> /* POSIX terminal control definitions */
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <termios.h>
+#include <malloc.h>
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -130,6 +131,7 @@ const char *getPatientName(void)
 const char *printChannelBlock()
 {
 	static char *buf = NULL;
+#if 0
 	if (buf == NULL) {
 		char *ptr;
 		int i;
@@ -151,12 +153,14 @@ const char *printChannelBlock()
 		for (i = 0; i < 2; ++i) ptr += sprintf(ptr, "%- 8.8s", "1");
 		for (i = 0; i < 2; ++i) ptr += sprintf(ptr, "%- 32.32s", "");
 	}
+#endif
 	return buf;
 }
 
 const char *printEDFHeader()
 {
 	static char hbuf[257];
+#if 0
 	char strDur[128], strChan[16], strHeaderBytes[16];
 	hbuf[256] = 0; /* -.- */
 	sprintf(strDur, "%f", (1.0/((double)current.sampleRate)));
@@ -184,6 +188,7 @@ const char *printEDFHeader()
 			strDur,
 			strChan
 			);
+#endif
 	return hbuf;
 }
 

@@ -1,45 +1,20 @@
 #include <assert.h>
 #include <stdio.h>
+#include <malloc.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <stddef.h>
 #include <openedf.h>
+#include <unistd.h>
+#include <edfmacros.h>
 
-#define DECODEHEADERFIELD(packet, fieldName) \
-				packet+offsetof(struct EDFPackedHeader,fieldName), sizeof((struct EDFPackedHeader *)0)->fieldName
+#define MAXERRORLEN 1024
 
-#define DECODECHANNELFIELD(packet, fieldName, whichChannel, totalChannels) \
-				packet+totalChannels*offsetof(struct EDFPackedChannelHeader,fieldName) + whichChannel*sizeof(((struct EDFPackedChannelHeader *)0)->fieldName),sizeof((struct EDFPackedChannelHeader *)0)->fieldName
-
-#define LOADHFI(m) \
-	result->m = EDFUnpackInt(DECODEHEADERFIELD(packet, m))
-#define LOADHFD(m) \
-	result->m = EDFUnpackDouble(DECODEHEADERFIELD(packet, m))
-#define LOADHFS(m) \
-	strcpy(result->m, EDFUnpackString(DECODEHEADERFIELD(packet, m)))
-
-#define LOADCFI(m) \
-	result->m = EDFUnpackInt(DECODECHANNELFIELD(packet, m, whichChannel, totalChannels))
-#define LOADCFD(m) \
-	result->m = EDFUnpackDouble(DECODECHANNELFIELD(packet, m, whichChannel, totalChannels))
-#define LOADCFS(m) \
-	strcpy(result->m, EDFUnpackString(DECODECHANNELFIELD(packet, m, whichChannel, totalChannels)))
-
-#define STORECFI(m, i) \
-	storeEDFInt(DECODECHANNELFIELD(packet, m, whichChannel, totalChannels), i)
-#define STORECFD(m, d) \
-	storeEDFDouble(DECODECHANNELFIELD(packet, m, whichChannel, totalChannels), d)
-#define STORECFS(m, s) \
-	storeEDFString(DECODECHANNELFIELD(packet, m, whichChannel, totalChannels), s)
-
-#define STOREHFI(m, i) \
-	storeEDFInt(DECODEHEADERFIELD(packet, m), i)
-#define STOREHFD(m, d) \
-	storeEDFDouble(DECODEHEADERFIELD(packet, m), d)
-#define STOREHFS(m, s) \
-	storeEDFString(DECODEHEADERFIELD(packet, m), s)
+static char errorBuffer[MAXERRORLEN];
 
 void printChannelHeader(const struct EDFDecodedChannelHeader *chdr);
+void setLastError(const char *fmt, ...);
 
 int EDFUnpackInt(const char *inp, int fieldLen)
 {
@@ -63,7 +38,7 @@ void storeEDFString(char *packet, size_t memsize, const char *str)
 {
 	char fmt[8];
 	char buf[257];
-	sprintf(fmt, "%%- %d.%ds");
+	sprintf(fmt, "%%- %ds", memsize);
 	sprintf(buf, fmt, str);
 	memcpy(packet, buf, memsize);
 }
@@ -108,12 +83,11 @@ int EDFEncodePacket(char *packet, const struct EDFDecodedConfig *cfg)
 		STORECFI(sampleCount, cfg->chan[whichChannel].sampleCount);
 		STORECFS(reserved, cfg->chan[whichChannel].reserved);
 	}
+	return 0;
 }
 
 void EDFDecodeChannelHeader(struct EDFDecodedChannelHeader *result, const char *packet, int whichChannel, int totalChannels)
 {
-	struct EDFPackedChannelHeader *p = (struct EDFPackedChannelHeader *) packet;
-	const char *src, *dest;
 	memset((char *) result, 0, sizeof(*result));
 	LOADCFS(label);
 	LOADCFS(transducer);
@@ -128,8 +102,6 @@ void EDFDecodeChannelHeader(struct EDFDecodedChannelHeader *result, const char *
 }
 
 void EDFDecodeHeaderPreamble(struct EDFDecodedHeader *result, const char *packet) {
-	struct EDFPackedHeader *p = (struct EDFPackedHeader *) packet;
-	const char *src, *dest;
 	memset((char *) result, 0, sizeof(*result));
 	LOADHFS(dataFormat);
 	LOADHFS(localPatient);
@@ -213,10 +185,24 @@ int getDataRecordChunkSize(const struct EDFDecodedConfig *cfg)
 	return sum * BYTESPERSAMPLE;
 }
 
-void initEDFInputIterator(struct EDFInputIterator *edfi, const struct EDFDecodedConfig *cfg) {
+struct EDFInputIterator *newEDFInputIterator(const struct EDFDecodedConfig *cfg)
+{
+	struct EDFInputIterator *edfi;
+	edfi = calloc(1, sizeof(struct EDFInputIterator));
+	assert(edfi && "out of memory!");
 	edfi->cfg = *cfg;
 	edfi->dataRecordNum = 0;
 	edfi->sampleNum = 0;
+	edfi->dataRecord = calloc(1, getDataRecordChunkSize(&edfi->cfg));
+	assert(edfi->dataRecord && "out of memory!");
+	return edfi;
+}
+
+void freeEDFInputIterator(struct EDFInputIterator *edfi)
+{
+	free(edfi->dataRecord);
+	edfi->dataRecord = NULL;
+	free(edfi);
 }
 
 int stepEDFInputIterator(struct EDFInputIterator *edfi)
@@ -226,6 +212,22 @@ int stepEDFInputIterator(struct EDFInputIterator *edfi)
 		edfi->sampleNum = 0;
 		edfi->dataRecordNum += 1;
 	}
+	return 0;
+}
+
+
+int readDataRecord(const struct EDFInputIterator *edfi, FILE *fp)
+{
+	int retval;
+	retval = fseek(fp, 
+			edfi->cfg.hdr.headerRecordBytes + 
+			getDataRecordChunkSize(&edfi->cfg) * edfi->dataRecordNum,
+			SEEK_SET);
+	if (retval != 0) return retval;
+	retval = fread(edfi->dataRecord, 1, getDataRecordChunkSize(&edfi->cfg), fp);
+	if (retval != getDataRecordChunkSize(&edfi->cfg))
+		return 1;
+	return 0;
 }
 
 /* Assumes all channels sample at the same frequency */
@@ -233,18 +235,16 @@ int fetchSamples(const struct EDFInputIterator *edfi, short *samples, FILE *fp)
 {
 	int retval;
 	int i;
-	retval = fseek(fp, 
-			edfi->cfg.hdr.headerRecordBytes + 
-			getDataRecordChunkSize(&edfi->cfg) * edfi->dataRecordNum +
-			BYTESPERSAMPLE * edfi->sampleNum, SEEK_SET);
-	if (retval != 0) return retval;
-	retval = fseek(fp, edfi->sampleNum * BYTESPERSAMPLE, SEEK_CUR);
-	if (retval != 0) return retval;
+	int sampleCount;
+	if (edfi->sampleNum == 0) {
+		retval = readDataRecord(edfi, fp);
+		if (retval != 0) return retval;
+	}
+	sampleCount = edfi->cfg.chan[0].sampleCount;
 	for (i = 0; i < edfi->cfg.hdr.dataRecordChannels; ++i) {
-		// TODO: Make this big-endian-safe and faster
-		retval = fread(samples+i, 1, BYTESPERSAMPLE, fp);
-		if (retval != BYTESPERSAMPLE) return 1;
-		fseek(fp, (edfi->cfg.chan[i].sampleCount-1) * BYTESPERSAMPLE, SEEK_CUR);
+		// TODO: Make this big-endian-safe
+		samples[i] = * (short *) 
+			(&edfi->dataRecord[BYTESPERSAMPLE*(edfi->sampleNum + i * sampleCount)]);
 	}
 	return 0;
 }
@@ -254,5 +254,59 @@ void printHeader(const struct EDFDecodedHeader *hdr)
 	printf("The data record count is %d\n", hdr->dataRecordCount);
 	printf("The data record channels is %d\n", hdr->dataRecordChannels);
 	printf("The data record seconds is %f\n", hdr->dataRecordSeconds);
+}
+
+int isValidREDF(const struct EDFDecodedConfig *cfg)
+{
+	int i;
+	if (cfg->hdr.dataRecordSeconds != 1.0) {
+		setLastError("The data record must be exactly 1 second, not %f.", 
+								 cfg->hdr.dataRecordSeconds);
+		return 0;
+	}
+	if (cfg->hdr.dataRecordChannels < 1) {
+		setLastError("The data record must have at least one channel.");
+		return 0;
+	}
+	if (cfg->chan[0].sampleCount < 1) {
+		setLastError("Channel 0 must have at least one sample.");
+		return 0;
+	}
+	for (i = 1; i < cfg->hdr.dataRecordChannels; ++i) {
+		if (cfg->chan[i].sampleCount != cfg->chan[0].sampleCount) {
+			setLastError("Channel %d has %d samples, but channel 0 has %d.  These must be the same.", cfg->chan[i].sampleCount, cfg->chan[0].sampleCount);
+			return 0;
+		}
+	}
+	return 1;
+}
+
+int makeREDFConfig(struct EDFDecodedConfig *result, const struct EDFDecodedConfig *source)
+{
+	int newSamples, i;
+	*result = *source;
+	if (source->hdr.dataRecordSeconds != 1.0) {
+		result->hdr.dataRecordSeconds = 1;
+		newSamples = ((double)source->chan[0].sampleCount) / 
+			             source->hdr.dataRecordSeconds;
+		for (i = 0; i < source->hdr.dataRecordChannels; ++i)
+			result->chan[i].sampleCount = newSamples;
+	}
+	assert(isValidREDF(result));
+	return 0;
+}
+
+const char *getLastError(void)
+{
+	return errorBuffer;
+}
+
+void setLastError(const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	vsnprintf(errorBuffer, MAXERRORLEN-1, fmt, ap);
+	errorBuffer[MAXERRORLEN-1] = '\0';
+	va_end(ap);
 }
 

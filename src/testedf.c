@@ -4,7 +4,7 @@
 int main(int argc, char **argv)
 {
 	struct EDFDecodedConfig cfg;
-	struct EDFInputIterator edfi;
+	struct EDFInputIterator *edfi;
 	FILE *fp;
 	int i;
 	int retval;
@@ -23,20 +23,21 @@ int main(int argc, char **argv)
 
 	printf("The chunk size is %d\n", chunksize);
 	printf("The header size is %d\n", cfg.hdr.headerRecordBytes);
-	initEDFInputIterator(&edfi, &cfg);
+	edfi = newEDFInputIterator(&cfg);
 	i = 0;
 	for (;;) {
 		int retval;
 		short samples[MAXCHANNELS];
-		retval = fetchSamples(&edfi, samples, fp);
+		retval = fetchSamples(edfi, samples, fp);
 		if (retval != 0) break;
 		i += 1;
 		if (i % 1000 == 0) {
-			printf("Read %d timesamples and on datarecord %05d:%04d\n", i, edfi.dataRecordNum, edfi.sampleNum);
+			printf("Read %d timesamples and on datarecord %05d:%04d\n", i, edfi->dataRecordNum, edfi->sampleNum);
 		}
-		stepEDFInputIterator(&edfi);
+		stepEDFInputIterator(edfi);
 	}
 
 	fclose(fp);
+	freeEDFInputIterator(edfi);
 	return 0;
 }

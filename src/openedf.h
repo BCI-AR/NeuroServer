@@ -6,6 +6,8 @@
 #define MAXCHANNELS 32
 #define BYTESPERSAMPLE 2
 
+#define READBUFFERSIZE 4096
+
 #pragma pack(1)
 
 struct EDFPackedHeader {
@@ -69,11 +71,13 @@ struct EDFInputIterator {
 	struct EDFDecodedConfig cfg;
 	int dataRecordNum;
 	int sampleNum;
+	char *dataRecord;
 };
 
-void initEDFInputIterator(struct EDFInputIterator *edfi, const struct EDFDecodedConfig *cfg);
+struct EDFInputIterator *newEDFInputIterator(const struct EDFDecodedConfig *cfg);
 int stepEDFInputIterator(struct EDFInputIterator *edfi);
 int fetchSamples(const struct EDFInputIterator *edfi, short *samples, FILE *fp);
+void freeEDFInputIterator(struct EDFInputIterator *edfi);
 
 int EDFUnpackInt(const char *inp, int fieldLen);
 double EDFUnpackDouble(const char *inp, int fieldLen);
@@ -89,6 +93,13 @@ int getDataRecordChunkSize(const struct EDFDecodedConfig *cfg);
 
 double getSamplesPerSecond(const struct EDFDecodedConfig *cfg, int whichChan);
 double getSecondsPerSample(const struct EDFDecodedConfig *cfg, int whichChan);
+
+/* Realtime EDF (REDF) is a restricted type of EDF for the network */
+int isValidREDF(const struct EDFDecodedConfig *cfg);
+int makeREDFHeader(struct EDFDecodedHeader *result, const struct EDFDecodedConfig *source);
+
+/* Returns a text description of the last error */
+const char *getLastError(void);
 
 #endif
 

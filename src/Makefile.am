@@ -1,5 +1,6 @@
 # neurod is the OpenEEG Server Demon NeuroServer
 
+CFLAGS= -Wall
 CPPFLAGS= -I.
 
 bin_PROGRAMS = neurod testedf
