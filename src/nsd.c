@@ -383,7 +383,7 @@ int main()
 							handleLine(curPtr, i);
 							curPtr = nlPtr + 1;
 						}
-						memmove(clients[i].lineBuf, curPtr, strlen(curPtr));
+						memmove(clients[i].lineBuf, curPtr, strlen(curPtr)+1);
 						clients[i].linePos -= curPtr - clients[i].lineBuf;
 						rtime(&clients[i].lastAlive);
 					}
