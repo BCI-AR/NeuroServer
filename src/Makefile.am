@@ -3,10 +3,20 @@
 AM_CFLAGS= -Wall -g
 AM_CPPFLAGS= -I.
 
-bin_PROGRAMS = nsd modeegdriver readedf writeedf opencnvdriver writebdf
+lib_LIBRARIES = libneuro.a
+
+libneuro_a_HEADERS = neuro/neuro.h neuro/stringtable.h
+libneuro_adir = $(includedir)/neuro
+
+libneuro_a_SOURCES = stringtable.c
+
+bin_PROGRAMS = nsd modeegdriver readedf writeedf opencnvdriver writebdf neurotest
+
+neurotest_SOURCES = neurotest.c
+neurotest_LDADD = libneuro.a
 
 nsd_SOURCES = nsd.c nsutil.c nsnet.c monitor.c monitor.h cmdhandler.c \
-openedf.c config.h cmdhandler.h edfmacros.h nsd.h nsnet.h nsutil.h openedf.h pctimer.h stringtable.c stringtable.h
+openedf.c config.h cmdhandler.h edfmacros.h nsd.h nsnet.h nsutil.h openedf.h pctimer.h
 
 modeegdriver_SOURCES = modeegdriver.c nsser.c nsutil.c openedf.c \
 nsnet.c monitor.c monitor.h \

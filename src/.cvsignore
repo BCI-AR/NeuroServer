@@ -1,0 +1,11 @@
+Makefile
+o
+*.exe
+stamp-h1
+stamp-h1.in
+.cvsignore
+.deps
+.libs
+Makefile.in
+config.h
+tmp

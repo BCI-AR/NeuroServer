@@ -2,6 +2,7 @@
 #define __STRINGTABLE_H
 
 #include <stdio.h>
+#include <neuro/neuro.h>
 
 struct StringTable;
 

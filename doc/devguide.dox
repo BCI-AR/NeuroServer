@@ -2,17 +2,23 @@
 \page devguide NeuroServer Developer Guide
 \author Rudi Cilibrasi (cilibrar@ofb.net)
 
-This program uses GNU autoconf/automake.
+This program uses GNU autoconf/automake/libtool.
 
 To regenerate configuration scripts, do this:
 \code
-aclocal ; autoconf ; automake -a
+aclocal ; autoconf ; automake
 \endcode
 then configure with
 \code
 ./configure
 \endcode
 to regenerate the Makefile's.
+
+If you get a persistent error, "ltmain.sh" missing, then you should
+try running automake --add-missing
+If this doesn't fix it then you must upgrade your libtool.
+(Cygwin has a broken devel libtool, try using stable instead for this phase
+to work around the bug)
 
 When compiling, if you get 'attribute_used redefined' warnings, you may
 ignore them without consequence.  If you want to eliminate them, you
