@@ -471,6 +471,7 @@ int rselect_timed(sock_t max_fd, fd_set *toread, fd_set *towrite,
 {
 	int retval;
 	retval = rselect_real(max_fd, toread, towrite, toerr, tv);
+	return retval;
 }
 	
 int rselect(sock_t max_fd, fd_set *toread, fd_set *towrite, fd_set *toerr)

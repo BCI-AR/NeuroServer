@@ -377,7 +377,7 @@ int main()
 						curPtr = clients[i].lineBuf;
 						clients[i].linePos += j;
 						clients[i].lineBuf[clients[i].linePos] = '\0';
-						while (nlPtr = strchr(curPtr, '\n')) {
+						while ( (nlPtr = strchr(curPtr, '\n')) ) {
 							*nlPtr = '\0';
 							lineBuf = curPtr;
 							handleLine(curPtr, i);

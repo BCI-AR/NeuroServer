@@ -66,8 +66,9 @@ int isValidPacket(unsigned short chan, unsigned short *samples)
 {
 	int i;
 	if (chan != 2 && chan != 4 && chan != 6) return 0;
-	for (i = 0; i < chan; i++)
+	for (i = 0; i < chan; i++) {
 		if (samples[i] > 1023) return 0;
+	}
 	return 1;
 }
 
@@ -86,7 +87,9 @@ void gobbleChars(int howMany)
 
 void eatCharacter(unsigned char c)
 {
+#define MINGOOD 6
 	int oldHasMatched;
+	static int goodCount;
 	unsigned short vals[MAXCHANNELS];
 	int ns;
 	int didMatch = 0;
@@ -103,18 +106,25 @@ void eatCharacter(unsigned char c)
 			didMatch = doesMatchP3(c, vals, &ns);
 	} else {
 		if ( (didMatch = doesMatchP2(c, vals, &ns)) ) {
-			hasMatchedProtocol = 1;
-			isP2 = 1;
+			if (goodCount > MINGOOD) {
+				hasMatchedProtocol = 1;
+				isP2 = 1;
+			}
 		} else {
 			if ( (didMatch = doesMatchP3(c, vals, &ns)) ) {
-				hasMatchedProtocol = 1;
-				isP3 = 1;
+				if (goodCount > MINGOOD) {
+					hasMatchedProtocol = 1;
+					isP3 = 1;
+				}
 			}
 		}
 	}
 	if (didMatch) {
 		char *pstr = "xx";
-		if (!isValidPacket(ns, vals)) {
+		if (isValidPacket(ns, vals)) {
+			goodCount += 1;
+		}
+		else {
 			rprintf("Warning: invalid serial packet ahead!\n");
 		}
 		if (isP2)
@@ -133,6 +143,7 @@ void eatCharacter(unsigned char c)
 		failCount += 1;
 		if (failCount % PROTOWINDOW == 0) {
 			rprintf("Serial packet sync error -- missed window.\n");
+			goodCount = 0;
 		}
 	}
 }
@@ -142,6 +153,7 @@ void handleSamples(int packetCounter, int chan, unsigned short *vals)
 	char buf[MAXLEN];
 	int bufPos = 0;
 	int i;
+//	printf("Got good packet with counter %d, %d chan\n", packetCounter, chan);
 	if (chan > current.hdr.dataRecordChannels)
 		chan = current.hdr.dataRecordChannels;
 	bufPos += sprintf(buf+bufPos, "! %d %d", packetCounter, chan);
@@ -189,8 +201,12 @@ int doesMatchP3(unsigned char c,  unsigned short *vals,int *nsamples)
 	j = (j+1) % 3;
 	if (c & 0x80) {
 		if (j == 0) {
+			int k;
 			memcpy(vals, samples, sizeof(vals[0]) * i * 2);
 			*nsamples = i * 2;
+			for (k = 0; k < *nsamples; ++k)
+				if (vals[k] > 1023)
+					goto resetMachine;
 			i = 0;
 			j = 0;
 			needsHeader = 1;
@@ -198,7 +214,8 @@ int doesMatchP3(unsigned char c,  unsigned short *vals,int *nsamples)
 			return 1;
 		}
 		else {
-			rprintf("P3 sync error:i=%d,j=%d,c=%d.\n",i,j,c);
+			if (isP3)
+				rprintf("P3 sync error:i=%d,j=%d,c=%d.\n",i,j,c);
 		}
 		goto resetMachine;
 	}
@@ -213,12 +230,14 @@ int doesMatchP3(unsigned char c,  unsigned short *vals,int *nsamples)
 
 int doesMatchP2(unsigned char c, unsigned short *vals,int *nsamples)
 {
-	enum P2State { waitingA5, waiting5A, waitingChannel, waitingData };
+#define P2CHAN 6
+	enum P2State { waitingA5, waiting5A, waitingVersion, waitingCounter,
+		waitingData, waitingSwitches };
 	static int packetCounter = 0;
 	static int chan = 0;
 	static int i = 0;
 	static enum P2State state = waitingA5;
-	unsigned short s[MAXCHANNELS];
+	static unsigned short s[MAXCHANNELS];
 	switch (state) {
 		case waitingA5:
 			if (c == 0xa5) {
@@ -235,40 +254,46 @@ int doesMatchP2(unsigned char c, unsigned short *vals,int *nsamples)
 
 		case waiting5A:
 			if (c == 0x5a)
-				state = waitingChannel;
+				state = waitingVersion;
 			else
 				state = waitingA5;
 			break;
 
-		case waitingChannel:
-			if (c == 2 || c == 4 || c == 6) {
-				chan = c;
-				i = 0;
-				state = waitingData;
-			}
+		case waitingVersion:
+			if (c == 0x02) /* only version 2 supported right now */
+				state = waitingCounter;
 			else
 				state = waitingA5;
+			break;
+
+		case waitingCounter:
+			packetCounter = c;
+			state = waitingData;
+			i = 0;
 			break;
 
 		case waitingData:
 			if ((i%2) == 0)
 				s[i/2] = c;
 			else
-				s[i/2] += (int) c * 256;
+				s[i/2] = s[i/2]* 256 + c;
 			i += 1;
-			if (i == chan*2) {
-				*nsamples = chan;
-				memcpy(vals, s, chan * sizeof(s[0]));
-				handleSamples(packetCounter, *nsamples, vals);
-				packetCounter = (packetCounter + 1) % 128;
-				state = waitingA5;
-				return 1;
-			}
+			if (i == P2CHAN * 2)
+				state = waitingSwitches;
 			break;
-			default:
+
+		case waitingSwitches:
+			chan = P2CHAN;
+			*nsamples = chan;
+			memcpy(vals, s, chan * sizeof(s[0]));
+			handleSamples(packetCounter, *nsamples, vals);
+			state = waitingA5;
+			return 1;
+
+		default:
 				rprintf("Error: unknown state in P2!\n");
 				rexit(0);
-			}
+		}
 	return 0;
 }
 
