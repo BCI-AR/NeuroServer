@@ -2,7 +2,7 @@
 #define __NSSER_H
 
 #ifdef __MINGW32__
-#define DEVICENAME "COM1"
+#define DEFAULTDEVICE "COM1"
 #include <windows.h>
 #include <winbase.h>
 
@@ -13,7 +13,7 @@
 #include <fcntl.h>
 #include <errno.h>   /* Error number definitions */
 #include <termios.h> /* POSIX terminal control definitions */
-#define DEVICENAME "/dev/ttyS0"
+#define DEFAULTDEVICE "/dev/ttyS0"
 #define ser_t int
 #endif
 

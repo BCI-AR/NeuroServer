@@ -1,0 +1,27 @@
+[Setup]
+AppName=NeuroServer
+AppVerName=NeuroServer 0.7.4
+CreateAppDir=true
+DefaultGroupName=NeuroServer
+DefaultDirName={pf}\NeuroServer
+;Compression=lzma
+;SolidCompression=yes
+AllowRootDirectory=true
+EnableDirDoesntExistWarning=true
+UsePreviousAppDir=false
+ShowLanguageDialog=no
+
+[Files]
+Source: ..\src\nsd.exe; DestDir: {app}
+Source: ..\src\modeegdriver.exe; DestDir: {app}
+Source: ..\src\readedf.exe; DestDir: {app}
+Source: ..\src\writeedf.exe; DestDir: {app}
+[Icons]
+Name: {group}\NSD; Filename: {app}\nsd.exe
+Name: {group}\MODEEGDRIVER; Filename: {app}\modeegdriver.exe
+Name: {group}\{cm:UninstallProgram, NeuroServer}; Filename: {uninstallexe}
+[UninstallDelete]
+Name: {app}\modeegdriver.exe; Type: files
+Name: {app}\nsd.exe; Type: files
+Name: {app}\readedf.exe; Type: files
+Name: {app}\writeedf.exe; Type: files

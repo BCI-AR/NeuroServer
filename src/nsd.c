@@ -6,6 +6,7 @@
 #include <openedf.h>
 #include <nsnet.h>
 #include <nsutil.h>
+#include <config.h>
 #include "cmdhandler.h"
 #include "nsd.h"
 
@@ -296,6 +297,7 @@ int main()
 	int retval;
 	sock_t sock_fd;
 	fd_set toread, toerr;
+	rprintf("NSD (NeuroServer Daemon) v. %s-%s\n", VERSION, OSTYPESTR);
 	enregisterCommand("hello", cmdHello);
 	enregisterCommand("control", cmdControl);
 	enregisterCommand("display", cmdDisplay);
@@ -309,10 +311,11 @@ int main()
 	enregisterCommand("watch", cmdWatch);
 	enregisterCommand("unwatch", cmdUnwatch);
 	rinitNetworking();
-	rprintf("The modeeg test driver has started.\n");
 	sock_fd = rsocket();
 
 	updateMaxFd(sock_fd);
+
+	rprintf("Binding network socket at %d\n", DEFAULTPORT); 
 
 	retval = rbindAll(sock_fd);
 	if (retval != 0) {

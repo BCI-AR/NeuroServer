@@ -422,37 +422,6 @@ size_t writen(sock_t fd, const void *vptr, size_t len, struct OutputBuffer *ob)
 	return len;
 }
 
-int readline(sock_t fd, char *vptr, size_t maxlen, struct InputBuffer *ib)
-{
-	size_t n;
-	int rc;
-	char c, *ptr;
-
-	addCount(NUM_READLINE);
-	showCounts();
-
-	setblocking(fd);
-	ptr = vptr;
-	for (n = 1; n < maxlen; n++) {
-		rc = my_read(fd, &c, maxlen, ib);
-		if (rc == -1)
-			return -1;
-		if (rc == 0) {
-			*ptr = 0;
-			n -= 1;
-			break;
-		}
-		if (rc == 1) {
-			if (c != '\n' && c != '\r')
-				*ptr++ = c;
-			if (c == '\n')
-				break;
-		} 
-	}
-	*ptr = '\0';
-	return n;
-}
-
 size_t readlinebuf(void **vptrptr, struct InputBuffer *ib)
 {
 	if (ib->read_cnt)
@@ -529,3 +498,35 @@ int rselect(sock_t max_fd, fd_set *toread, fd_set *towrite, fd_set *toerr)
 
 	return retval;
 }
+
+int readline(sock_t fd, char *vptr, size_t maxlen, struct InputBuffer *ib)
+{
+	size_t n;
+	int rc;
+	char c, *ptr;
+
+	addCount(NUM_READLINE);
+	showCounts();
+
+	setblocking(fd);
+	ptr = vptr;
+	for (n = 1; n < maxlen; n++) {
+		rc = my_read(fd, &c, maxlen, ib);
+		if (rc == -1)
+			return -1;
+		if (rc == 0) {
+			*ptr = 0;
+			n -= 1;
+			break;
+		}
+		if (rc == 1) {
+			if (c != '\n' && c != '\r')
+				*ptr++ = c;
+			if (c == '\n')
+				break;
+		} 
+	}
+	*ptr = '\0';
+	return n;
+}
+

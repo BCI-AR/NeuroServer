@@ -40,6 +40,7 @@ struct OutputBuffer {
 };
 
 sock_t rsocket(void);
+int readline(sock_t fd, char *vptr, size_t maxlen, struct InputBuffer *ib);
 const char *stringifyErrorCode(int code);
 int rbindAll(sock_t sock_fd);
 int writeBytes(sock_t con, const char *buf, int size, struct OutputBuffer *ob);
@@ -60,7 +61,6 @@ void initOutputBuffer(struct OutputBuffer *ob);
 int isEOF(sock_t con, const struct InputBuffer *ib);
 int inputBufferEmpty(const struct InputBuffer *ib);
 int my_read(sock_t fd, char *ptr, size_t maxlen, struct InputBuffer *);
-//int readline(sock_t fd, void *vptr, size_t maxlen, struct InputBuffer *ib);
 size_t readlinebuf(void **vptrptr, struct InputBuffer *);
 size_t writen(sock_t fd, const void *vptr, size_t len, struct OutputBuffer *ob);
 size_t readn(sock_t fd, void *vptr, size_t len, struct InputBuffer *ib);

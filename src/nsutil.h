@@ -12,4 +12,11 @@ extern int max_fd;
 void updateMaxFd(int fd);
 void rtime(time_t *t);
 void rsleep(int ms);
+
+#ifdef __MINGW32__
+#define OSTYPESTR "Windows"
+#else
+#define OSTYPESTR "Linux"
+#endif
+
 #endif

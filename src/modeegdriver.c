@@ -6,6 +6,7 @@
 #include <nsutil.h>
 #include <nsser.h>
 #include <openedf.h>
+#include <config.h>
 
 /* This is the maximum size of a protocol packet */
 #define PROTOWINDOW 24
@@ -297,26 +298,63 @@ int doesMatchP2(unsigned char c, unsigned short *vals,int *nsamples)
 		}
 	return 0;
 }
+void printHelp()
+{
+	rprintf("ModEEG Driver interfaces the ModEEG system to the NeuroServer TCP/IP protocol\n");
+	rprintf("Usage: modeegdriver [-d serialDeviceName] [hostname] [portno]\n");
+	rprintf("The default options are modeegdriver -d %s %s %d\n",
+			DEFAULTDEVICE, DEFAULTHOST, DEFAULTPORT);
+}
 
 int main(int argc, char **argv)
 {
 	char responseBuf[MAXLEN];
+	int i;
 	int retval;
 	ser_t serport;
 	char EDFPacket[MAXHEADERLEN];
 	int EDFLen = MAXHEADERLEN;
 	char smallbuf[PROTOWINDOW];
-	char *hostname = DEFAULTHOST;
-	unsigned short portno = DEFAULTPORT;
+	char *hostname = NULL;
+	char *deviceName = NULL;
+	//DEFAULTHOST;
+	unsigned short portno = 0;
+	// DEFAULTPORT;
 	struct timeval when;
+
+	rprintf("ModEEG Driver v. %s-%s\n", VERSION, OSTYPESTR);
 
 	rinitNetworking();
 
-	if (argc > 1)
-		hostname = argv[1];
-	if (argc > 2)
-		portno = atoi(argv[2]);
-	rprintf("The modeeg test driver has started.\n");
+	for (i = 1; argv[i]; ++i) {
+		if (argv[i][0] == '-' && argv[i][1] == 'h') {
+			printHelp();
+			exit(0);
+		}
+		if (argv[i][0] == '-' && argv[i][1] == 'd') {
+			if (argv[i+1] == NULL) {
+				rprintf("Bad devicename option: %s\nExpected device name as next argument.\n", argv[i]);
+				exit(1);
+			}
+			deviceName = argv[i+1];
+			i += 1;
+			continue;
+		}
+		if (hostname == NULL) {
+			hostname = argv[i];
+			continue;
+		}
+		if (portno == 0) {
+			portno = atoi(argv[i]);
+			continue;
+		}
+	}
+	if (deviceName == NULL)
+		deviceName = DEFAULTDEVICE;
+	if (portno == 0)
+		portno = DEFAULTPORT;
+	if (hostname == NULL)
+		hostname = DEFAULTHOST;
 	
 	makeREDFConfig(&current, &modEEGCfg);
 	writeEDFString(&current, EDFPacket, &EDFLen);
@@ -329,6 +367,7 @@ int main(int argc, char **argv)
 	}
 	setblocking(sock_fd);
 
+	rprintf("Attempting to connect to nsd at %s:%d\n", hostname, portno);
 	retval = rconnectName(sock_fd, hostname, portno);
 	if (retval != 0) {
 		rprintf("connect error\n");
@@ -337,8 +376,8 @@ int main(int argc, char **argv)
 	rprintf("Socket connected.\n");
 	fflush(stdout);
 
-	serport = openSerialPort(DEVICENAME);
-	rprintf("Serial port %s opened.\n", DEVICENAME);
+	serport = openSerialPort(deviceName);
+	rprintf("Serial port %s opened.\n", deviceName);
 	
 	writeString(sock_fd, "eeg\n", &ob);
 	mGetOK(sock_fd, &ib);
@@ -350,6 +389,7 @@ int main(int argc, char **argv)
 #ifndef __MINGW32__
 	updateMaxFd(serport);
 #endif
+	when.tv_usec = (1000000L / modEEGCfg.chan[0].sampleCount);
 	rprintf("Polling at %d Hertz or %d usec\n", modEEGCfg.chan[0].sampleCount, when.tv_usec);
 	for (;;) {
 		int i, readSerBytes;
