@@ -40,6 +40,7 @@ static struct OutputBuffer ob;
 struct InputBuffer ib;
 char lineBuf[MAXLEN];
 int linePos = 0;
+int blockCounter = 0;
 
 unsigned short **sampleBuffers; // [MAXCHANNELS][MAXSAMPLES]
 unsigned int sampleCount;
@@ -68,8 +69,10 @@ void writeBuffers()
 	assert(fp != NULL && "Cannot open file!");
 	fseek(fp, 0, SEEK_END);
 	for (i = 0; i < cfg.hdr.dataRecordChannels; ++i)
-		fwrite(sampleBuffers, sizeof(unsigned short), sampleCount, fp);
+		fwrite(sampleBuffers[i], sizeof(unsigned short), sampleCount, fp);
 	fclose(fp);
+	rprintf("Wrote block %d\n", blockCounter);
+	blockCounter += 1;
 	resetSampleBuffers();
 }
 
@@ -204,7 +207,6 @@ int main(int argc, char **argv)
 			int devNum, packetCounter=0, channels=0, *samples;
 			rselect(sock_fd+1, &toread, NULL, NULL);
 			linePos = readline(sock_fd, lineBuf, sizeof(EDFPacket), &ib);
-			rprintf("Got line len %d: <%s>\n", linePos, lineBuf);
 			if (isEOF(sock_fd, &ib))
 				break;
 			if (linePos < MINLINELENGTH)
@@ -214,19 +216,18 @@ int main(int argc, char **argv)
 			for (cur = strtok(lineBuf, DELIMS); cur ; cur = strtok(NULL, DELIMS)) {
 				if (isANumber(cur))
 					vals[curParam++] = atoi(cur);
+			}
 			// <devicenum> <packetcounter> <channels> data0 data1 data2 ...
-				if (curParam < 3)
-					continue;
-				devNum = vals[0];
-				packetCounter = vals[1];
-				channels = vals[2];
-				samples = vals + 3;
-				handleSamples(packetCounter, channels, samples);
+			if (curParam < 3)
+				continue;
+			devNum = vals[0];
+			packetCounter = vals[1];
+			channels = vals[2];
+			samples = vals + 3;
+			handleSamples(packetCounter, channels, samples);
 //				for (i = 0; i < channels; ++i) {
 //					rprintf(" %d", samples[i]);
 //				}
-			}
-			rprintf("Got sample with %d channels: %d\n", channels, packetCounter);
 		}
 		rsleep(20);
 	}
