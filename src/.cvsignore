@@ -9,3 +9,11 @@ stamp-h1.in
 Makefile.in
 config.h
 tmp
+modeegdriver
+neurotest
+nsd
+opencnvdriver
+readedf
+writebdf
+writeedf
+config.h.in
