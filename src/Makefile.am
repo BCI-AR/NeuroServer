@@ -6,7 +6,7 @@ AM_CPPFLAGS= -I.
 bin_PROGRAMS = nsd modeegdriver readedf writeedf opencnvdriver writebdf
 
 nsd_SOURCES = nsd.c nsutil.c nsnet.c monitor.c monitor.h cmdhandler.c \
-openedf.c config.h cmdhandler.h edfmacros.h nsd.h nsnet.h nsutil.h openedf.h pctimer.h
+openedf.c config.h cmdhandler.h edfmacros.h nsd.h nsnet.h nsutil.h openedf.h pctimer.h stringtable.c stringtable.h
 
 modeegdriver_SOURCES = modeegdriver.c nsser.c nsutil.c openedf.c \
 nsnet.c monitor.c monitor.h \

@@ -158,8 +158,8 @@ void writeBufferToFile()
 void handleSamples(int packetCounter, int channels)
 {
 	static int lastPacketCounter = 0;
-	int i,j;
-  	unsigned char c1,c2,c3;
+	int i;
+	unsigned char c1,c2,c3=0;
 	if (lastPacketCounter + 1 != packetCounter && packetCounter != 0 && lastPacketCounter != 0) {
 		rprintf("May have missed packet: got packetCounters %d and %d\n", lastPacketCounter, packetCounter);
 	}
@@ -224,7 +224,7 @@ int main(int argc, char **argv)
 	fd_set toread;
 	int linePos = 0;
 	int i;
-	double tStart,tEnde;
+	double tStart;
 	sock_t sock_fd;
 	int retval;
 
@@ -338,7 +338,7 @@ int main(int argc, char **argv)
 	while ( (tStart+opts.seconds) > pctimer() ) {
 			char *cur;
 			int curParam = 0;
-			int devNum, packetCounter=0, channels=0;
+			int packetCounter=0, channels=0;
 			rselect(sock_fd+1, &toread, NULL, NULL);
 			linePos = readline(sock_fd, lineBuf, sizeof(EDFPacket), &ib);
 			if (isEOF(sock_fd, &ib)) {

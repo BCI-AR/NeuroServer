@@ -128,5 +128,8 @@ int makeREDFConfig(struct EDFDecodedConfig *result, const struct EDFDecodedConfi
 /* Returns a text description of the last error */
 const char *getLastError(void);
 
+const char *getDMY(void);
+const char *getHMS(void);
+
 #endif
 

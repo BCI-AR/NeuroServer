@@ -366,7 +366,7 @@ const char *getHMS(void)
 
 int makeREDFConfig(struct EDFDecodedConfig *result, const struct EDFDecodedConfig *source)
 {
-	int newSamples, i;
+	//int newSamples, i;
 	*result = *source;
 /*
 	if (source->hdr.dataRecordSeconds != 1.0) {

@@ -132,7 +132,7 @@ static struct EDFDecodedConfig current;
   */
 int isValidPacket(unsigned short chan, long *samples)
 {
-	int i;
+//	int i;
 //	if (chan != 2 && chan != 4 && chan !=5 && chan != 6) return 0;
 //	for (i = 0; i < chan; i++) {
 //		if (samples[i] > 16777216) return 0;
@@ -151,7 +151,7 @@ void eatCharacter(unsigned char c)
 /// place to store eeg data 
 	long vals[MAXCHANNELS];  
 	int didMatch = 0;
-	int ns=3;
+	//int ns=3;
 /// has the protocol been detected and validated ?	
 	if (hasMatchedProtocol) {
 	   didMatch = doesMatchOpenCNV(c, vals);
@@ -211,7 +211,7 @@ void handleSamples(int packetCounter, int chan, long *vals)
 {
 	char buf[MAXLEN];					///< network socket buffer
 	int bufPos = 0;
-        long ChannelValue;
+  //long ChannelValue;
 	int i;
 #ifdef DEBUGGING	
 	printf("Got good packet with counter %d, %d chan\n", packetCounter, chan);
@@ -354,9 +354,9 @@ int main(int argc, char **argv)
 	
         char linebuf[MAXLEN+1];	// fifo command buffer
         int writepos = 0;        
-        int readpos = 0;
+        //int readpos = 0;
         int len;
-        unsigned int lpos = 0;
+        //unsigned int lpos = 0;
 	
 	rprintf("OpenCNV Driver v. %s-%s\n", VERSION, OSTYPESTR);
 
@@ -400,8 +400,8 @@ int main(int argc, char **argv)
 ///	
 	current=openCNVCfg;
 	setEDFHeaderBytes(&current);
-        strcpy(current.hdr.recordingStartDate, getDMY());
-        strcpy(current.hdr.recordingStartTime, getHMS());
+  strcpy(current.hdr.recordingStartDate, getDMY());
+  strcpy(current.hdr.recordingStartTime, getHMS());
 //        assert(isValidREDF(result));
 //  	makeREDFConfig(&current, &openCNVCfg);
 //	write configuration into string 
