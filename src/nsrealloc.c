@@ -36,6 +36,13 @@ struct NSByteHolder *newNSByteHolder(void)
   return nsb;
 }
 
+void addBlock(struct NSByteHolder *nsb, char *buf, int len)
+{
+  int i;
+  for (i = 0; i < len; i += 1)
+    addCharacter(nsb, buf[i])
+}
+
 void addCharacter(struct NSByteHolder *nsb, char c)
 {
   ensureMoreSpace(nsb);

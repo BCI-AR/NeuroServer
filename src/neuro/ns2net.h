@@ -40,6 +40,7 @@ struct NSNetConnectionReadHandler {
 struct NSNet *newNSNet(void);
 /**
  * \brief Waits for a network event to arrive, and dispatches it, or times out.
+ * \param ns A pointer to the NSNet structure that was opened previously using newNSNet()
  * \param timeout a timeout value in milliseconds.  The function will return if no event occurs when the timeout value has elapsed.
  */
 void waitForNetEvent(struct NSNet *ns, int timeout);
@@ -75,7 +76,7 @@ int attemptBind(struct NSNet *ns, const struct NSNetBindHandler *nsb,
 /**
  * \brief Creates a new socket and initiates an asychronous connection request to the specified hostname and port.
  * \param ns Pointer to a struct NSNet
- * \param nsb User-defined callback functions for later results
+ * \param nsc User-defined callback functions for later results
  * \param destaddr A string containing either a dotted-quad IP address or a hostname specifying the destination address to connect to
  * \param destPort The network port number to connect to
  * \param udata User-supplied data to be passed on to the handler functions
@@ -125,7 +126,7 @@ int writeNSBytes(struct NSNetConnectionController *nscc, void *buf, int len);
 
 /**
  * \brief Closes a network connection.
- * \param The struct NSNetConnectionController associated with the network connection to be closed.
+ * \param nscc The struct NSNetConnectionController associated with the network connection to be closed.
  * \return 0 on success.
  * This function closes a network connection.  Note that if there are readers
  * attached on either or both sides, their close() method will be called.
