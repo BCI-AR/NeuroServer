@@ -133,9 +133,10 @@ int main(int argc, char **argv)
 	getOK(sock_fd, &ib);
 	t0 = pctimer();
 	initGTKSystem();
-	for (;;) {
+/*	for (;;) {
 		idleHandler();
 	}
+*/
 	return 0;
 }
 
@@ -146,7 +147,7 @@ int main(int argc, char **argv)
 
 #define DRAWINGAREAHEIGHT (TOPMARGIN + VIEWHEIGHT*2 + MARGIN)
 
-#define UPDATEINTERVAL 32
+#define UPDATEINTERVAL 64
 
 GtkWidget *window;
 GtkWidget *onscreen;
@@ -208,17 +209,21 @@ static gboolean expose_event( GtkWidget *widget, GdkEventExpose *event )
 void idleHandler(void)
 {
 	int i;
-	fd_set toread;
 	char *cur;
 	int vals[MAXCHANNELS + 5];
 	int curParam = 0;
 	int devNum, packetCounter, channels, *samples;
 
+#ifndef __MINGW32__
+	fd_set toread;
+
 	FD_ZERO(&toread);
 	FD_SET(sock_fd, &toread);
-	rselect(sock_fd+1, &toread, NULL, NULL);
+	updateMaxFd(sock_fd);
+	rselect(max_fd, &toread, NULL, NULL);
+#endif
 	linePos = readline(sock_fd, lineBuf, sizeof(EDFPacket), &ib);
-//	rprintf("Got line len %d: <%s>\n", linePos, lineBuf);
+	rprintf("Got line retval=<%d>, <%s>\n", linePos, lineBuf);
 	if (isEOF(sock_fd, &ib))
 		exit(0);
 	if (linePos < MINLINELENGTH)
