@@ -284,6 +284,7 @@ int doesMatchP2(unsigned char c, unsigned short *vals,int *nsamples)
 
 		case waitingSwitches:
 			chan = P2CHAN;
+			chan = 2;  /* todo: fix me */
 			*nsamples = chan;
 			memcpy(vals, s, chan * sizeof(s[0]));
 			handleSamples(packetCounter, *nsamples, vals);
