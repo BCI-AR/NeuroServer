@@ -217,7 +217,7 @@ int rconnectName(sock_t sock_fd, const char *hostname, unsigned short portno)
 			perror("connect");
 			exit(1);
 		}
-		monitorLog(PLACE_CONNECT, winerr);
+		monitorLog(PLACE_CONNECT, errno);
 	} while (retval == -1 && errno == EINPROGRESS);
 #endif
 	return retval;
