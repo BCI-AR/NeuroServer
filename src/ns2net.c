@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
+#include <stdlib.h>
 #include <string.h>
 #include <nsnet.h>
 #include <fcntl.h>
@@ -100,14 +101,10 @@ int attemptConnect(struct NSNet *ns, const struct NSNetConnectionHandler *nsc,
     return 1;
   }
   fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-  printf("Got socket!\n");
   setNSnonblocking(ns, fd);
-  printf("set nonblock socket!\n");
   errno = 0;
   retval = connect(fd, (struct sockaddr *) &dest, sizeof(dest));
   if (retval == -1) connErrno = errno;
-  printf("got %d from connect\n", retval);
-  printf("connErrno is %d\n", connErrno);
   if (retval == 0) {
     nsc->success(udata);
     return 0;
@@ -146,37 +143,46 @@ void waitForNetEvent(struct NSNet *ns, int timeout)
   sock_t max_fd;
   struct timeval tv;
   int retval;
+  int i;
   readfds = ns->readfds;
   writefds = ns->writefds;
   errfds = ns->errfds;
   max_fd = ns->max_fd;
   tv.tv_sec = timeout / 1000;
   tv.tv_usec = (timeout % 1000) * 1000;
-  printf("selecting...\n");
   retval = select(max_fd, &readfds, &writefds, &errfds, &tv);
-  printf("Got %d descriptors\n", retval);
-  if (retval > 0) { // There are some fds ready
-    int i;
+  if (retval > 0) 
+  { // There are some fds ready
     int connErrno, connErrnoLen = sizeof(connErrno);
-    for (i = 0; i < ns->NSCICount; i+=1) {
-      if (FD_ISSET(ns->nsci[i].fd, &writefds) || FD_ISSET(ns->nsci[i].fd, &errfds) || FD_ISSET(ns->nsci[i].fd, &readfds)) {
-        if (getsockopt(ns->nsci[i].fd, SOL_SOCKET, SO_ERROR, &connErrno, &connErrnoLen) == 0) {
-          printf("Got recalled socked connErrno = %d\n", connErrno);
-              if (connErrno == ECONNREFUSED) {
-                ns->nsci[i].nsc.refused(ns->nsci[i].udata);
-                removeFdAll(ns, ns->nsci[i].fd);
-                return;
-              }
-            }
-        removeFdAll(ns, ns->nsci[i].fd);
-        printf("Inside WaitFor with %s\n", showFD(ns->nsci[i].fd, &readfds, &writefds, &errfds));
-//        retval = connect(ns->nsci[i].fd, (struct sockaddr *) &(ns->nsci[i].dest), sizeof(struct sockaddr));
-        if (FD_ISSET(ns->nsci[i].fd, &errfds)) {
-          ns->nsci[i].nsc.refused(ns->nsci[i].udata);
-        } else {
-          ns->nsci[i].nsc.success(ns->nsci[i].udata);
+    for (i = 0; i < ns->NSCICount; i+=1)
+    {
+      if (FD_ISSET(ns->nsci[i].fd, &writefds) || FD_ISSET(ns->nsci[i].fd, &errfds) || FD_ISSET(ns->nsci[i].fd, &readfds)) 
+      {
+        if (getsockopt(ns->nsci[i].fd, SOL_SOCKET, SO_ERROR, &connErrno, &connErrnoLen) == 0) 
+        {
+          switch(connErrno)
+          {
+            case ECONNREFUSED:
+              ns->nsci[i].nsc.refused(ns->nsci[i].udata);
+              removeFdAll(ns, ns->nsci[i].fd);
+              break;
+            case 0:
+              ns->nsci[i].nsc.success(ns->nsci[i].udata);
+              removeFdAll(ns, ns->nsci[i].fd);
+              break;
+            default:
+              printf("Unhandled connErrno: %d\n", connErrno);
+              exit(1);
+              break;
+          }
+          return;
         }
       }
+    }
+  }
+  else {
+    for (i = 0; i < ns->NSCICount; ++i) {
+      ns->nsci[i].nsc.timedOut(ns->nsci[i].udata);
     }
   }
 }

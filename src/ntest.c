@@ -8,25 +8,21 @@ struct NSCounter { int success, timedOut, refused, unknownHost; };
 static void NSCHUnknownHost(void *udata) {
   struct NSCounter *count = (struct NSCounter *) udata;
   count->unknownHost += 1;
-  printf("UH!\n");
 }
 
 static void NSCHTimedOut(void *udata) {
   struct NSCounter *count = (struct NSCounter *) udata;
   count->timedOut += 1;
-  printf("TO!\n");
 }
 
 static void NSCHRefused(void *udata) {
   struct NSCounter *count = (struct NSCounter *) udata;
   count->refused += 1;
-  printf("RE!\n");
 }
 
 static void NSCHSuccess(void *udata) {
   struct NSCounter *count = (struct NSCounter *) udata;
   count->success += 1;
-  printf("SU!\n");
 }
 
 static void testNSConnect(void) {
@@ -56,10 +52,8 @@ static void testNSNet(void)
 {
   testNSConnect();
   if (fork()) {
-    printf("In the parent\n");
   }
   else {
-    printf("In the child\n");
   }
 }
 
