@@ -16,4 +16,5 @@ opencnvdriver
 readedf
 writebdf
 writeedf
+ntest
 config.h.in
