@@ -5,8 +5,7 @@
 
 #define MAXCHANNELS 32
 #define BYTESPERSAMPLE 2
-
-#define READBUFFERSIZE 4096
+#define MAXHEADERLEN ((MAXCHANNELS+1) * 256)
 
 #pragma pack(1)
 
@@ -96,7 +95,7 @@ double getSecondsPerSample(const struct EDFDecodedConfig *cfg, int whichChan);
 
 /* Realtime EDF (REDF) is a restricted type of EDF for the network */
 int isValidREDF(const struct EDFDecodedConfig *cfg);
-int makeREDFHeader(struct EDFDecodedHeader *result, const struct EDFDecodedConfig *source);
+int makeREDFConfig(struct EDFDecodedConfig *result, const struct EDFDecodedConfig *source);
 
 /* Returns a text description of the last error */
 const char *getLastError(void);

@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <time.h>
 #include <stdio.h>
 #include <malloc.h>
 #include <string.h>
@@ -13,7 +14,6 @@
 
 static char errorBuffer[MAXERRORLEN];
 
-void printChannelHeader(const struct EDFDecodedChannelHeader *chdr);
 void setLastError(const char *fmt, ...);
 
 int EDFUnpackInt(const char *inp, int fieldLen)
@@ -43,10 +43,11 @@ void storeEDFString(char *packet, size_t memsize, const char *str)
 	memcpy(packet, buf, memsize);
 }
 
+// TODO: Make this more correct for combinations of d and memsize
 void storeEDFDouble(char *packet, size_t memsize, double d)
 {
 	char buf[64];
-	sprintf(buf, "%f", d);
+	sprintf(buf, "%g", d);
 	storeEDFString(packet, memsize, buf);
 }
 
@@ -71,6 +72,7 @@ int EDFEncodePacket(char *packet, const struct EDFDecodedConfig *cfg)
 	STOREHFD(dataRecordSeconds, cfg->hdr.dataRecordSeconds);
 	STOREHFI(dataRecordChannels, cfg->hdr.dataRecordChannels);
 	totalChannels = cfg->hdr.dataRecordChannels;
+	packet += 256;
 	for (whichChannel = 0; whichChannel < totalChannels; whichChannel++) {
 		STORECFS(label, cfg->chan[whichChannel].label);
 		STORECFS(transducer, cfg->chan[whichChannel].transducer);
@@ -115,7 +117,6 @@ void EDFDecodeHeaderPreamble(struct EDFDecodedHeader *result, const char *packet
 	LOADHFI(dataRecordChannels);
 }
 
-// Must call setEDFHeaderBytes() before writeEDF
 int writeEDF(int fd, const struct EDFDecodedConfig *cfg)
 {
 	int retval;
@@ -161,11 +162,6 @@ int readEDF(int fd, struct EDFDecodedConfig *cfg)
 	return 0;
 }
 
-void printChannelHeader(const struct EDFDecodedChannelHeader *chdr)
-{
-	printf("The number of samples is %d\n", chdr->sampleCount);
-	printf("The channel name is %s\n", chdr->label);
-}
 
 double getSecondsPerSample(const struct EDFDecodedConfig *cfg, int whichChan)
 {
@@ -249,13 +245,6 @@ int fetchSamples(const struct EDFInputIterator *edfi, short *samples, FILE *fp)
 	return 0;
 }
 
-void printHeader(const struct EDFDecodedHeader *hdr)
-{
-	printf("The data record count is %d\n", hdr->dataRecordCount);
-	printf("The data record channels is %d\n", hdr->dataRecordChannels);
-	printf("The data record seconds is %f\n", hdr->dataRecordSeconds);
-}
-
 int isValidREDF(const struct EDFDecodedConfig *cfg)
 {
 	int i;
@@ -281,6 +270,35 @@ int isValidREDF(const struct EDFDecodedConfig *cfg)
 	return 1;
 }
 
+const char *getDMY(void)
+{
+	static char buf[81];
+	time_t t;
+	struct tm *it;
+	time(&t);
+	it = localtime(&t);
+	sprintf(buf, "%02d.%02d.%02d", it->tm_mday, it->tm_mon+1, it->tm_year % 100);
+	return buf;
+}
+
+const char *getHMS(void)
+{
+	static char buf[81];
+	time_t t;
+	struct tm *it;
+	time(&t);
+	it = localtime(&t);
+	sprintf(buf, "%02d.%02d.%02d", it->tm_hour, it->tm_min, it->tm_sec);
+	return buf;
+}
+
+/* Sets the header byte count correctly and sets the data record
+ * duration to be 1 second and scaling sampleCount appropriately
+ * for each channel.  This function assumes only one sampling rate
+ * is used for all channels.  Also, sets the date and time correctly
+ * according to the system clock.
+ */
+
 int makeREDFConfig(struct EDFDecodedConfig *result, const struct EDFDecodedConfig *source)
 {
 	int newSamples, i;
@@ -292,6 +310,9 @@ int makeREDFConfig(struct EDFDecodedConfig *result, const struct EDFDecodedConfi
 		for (i = 0; i < source->hdr.dataRecordChannels; ++i)
 			result->chan[i].sampleCount = newSamples;
 	}
+	setEDFHeaderBytes(result);
+	strcpy(result->hdr.recordingStartDate, getDMY());
+	strcpy(result->hdr.recordingStartTime, getHMS());
 	assert(isValidREDF(result));
 	return 0;
 }

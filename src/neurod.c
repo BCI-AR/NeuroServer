@@ -12,7 +12,6 @@
  */
 
 #include <assert.h>
-#include <time.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
@@ -26,14 +25,38 @@
 #include <netinet/in.h>
 
 #include <neurod.h>
+#include <openedf.h>
 
-struct HardwareSettings {
-	/* Global settings */
-	int channelCount;
-	int sampleRate;
-};
+static struct EDFDecodedConfig p2Cfg = {
+		{ 0,   // header bytes, to be set later
+			-1,  // data record count
+			2,   // channels
+			"0", // data format
+			"Mr. Default Patient",
+			"Ms. Default Recorder",
+			"date",
+			"time",
+			"manufacturer",
+			1.0,  // 1 second per data record
+		}, {
+				{
+					256, // samples per second
+					-512, 512, // physical range
+					0, 1023,   // digital range
+					"electrode 0", // label
+					"metal electrode",  // transducer
+					"uV",  // physical unit dimensions
+					"LP:59Hz", // prefiltering
+					""         // reserved
+				},
+				{
+					256, -512, 512, 0, 1023, 
+					"electrode 1", "metal electrode", "uV", "LP:59Hz", ""
+				}
+		}
+	};
 
-struct HardwareSettings current = { 2, 256 };
+static struct EDFDecodedConfig current;
 
 struct InputBuffer {
 	unsigned char inbuf[MAXLINELENGTH];
@@ -66,8 +89,7 @@ void setnonblocking(int sock)
 
 void printFullEDFHeader(int fd)
 {
-	write(fd, printEDFHeader(), 256);
-	write(fd, printChannelBlock(), current.channelCount * 256);
+	writeEDF(fd, &current);
 }
 
 void watchForP2(unsigned char nextByte)
@@ -97,99 +119,6 @@ const char *getRecorderName(void)
 	static char namebuf[81];
 	sprintf(namebuf, "Ms. Default Recorder");
 	return namebuf;
-}
-
-const char *getDMY(void)
-{
-	static char buf[81];
-	time_t t;
-	struct tm *it;
-	time(&t);
-	it = localtime(&t);
-	sprintf(buf, "%02d.%02d.%02d", it->tm_mday, it->tm_mon+1, it->tm_year % 100);
-	return buf;
-}
-
-const char *getHMS(void)
-{
-	static char buf[81];
-	time_t t;
-	struct tm *it;
-	time(&t);
-	it = localtime(&t);
-	sprintf(buf, "%02d.%02d.%02d", it->tm_hour, it->tm_min, it->tm_sec);
-	return buf;
-}
-
-const char *getPatientName(void)
-{
-	static char namebuf[81];
-	sprintf(namebuf, "Mr. Default Patient");
-	return namebuf;
-}
-
-const char *printChannelBlock()
-{
-	static char *buf = NULL;
-#if 0
-	if (buf == NULL) {
-		char *ptr;
-		int i;
-		buf = calloc(1, 1+256*current.channelCount);
-		ptr = buf;
-		for (i = 0; i < 2; ++i) {
-			char namebuf[80];
-			sprintf(namebuf, "electrode%02d", i);
-			ptr += sprintf(ptr, "%- 16.16s", namebuf);
-		}
-		for (i = 0; i < 2; ++i) ptr += sprintf(ptr, "%- 80.80s", "metal electrode");
-		for (i = 0; i < 2; ++i) ptr += sprintf(ptr, "%- 8.8s", "uV");
-		for (i = 0; i < 2; ++i) ptr += sprintf(ptr, "%- 8.8s", "-500"); // physmin
-		for (i = 0; i < 2; ++i) ptr += sprintf(ptr, "%- 8.8s", "500");  // physmax
-		for (i = 0; i < 2; ++i) ptr += sprintf(ptr, "%- 8.8s", "-512");  // digmin
-		for (i = 0; i < 2; ++i) ptr += sprintf(ptr, "%- 8.8s", "512");   // digmax
-		for (i = 0; i < 2; ++i) ptr += sprintf(ptr, "%- 80.80s", 
-					"LP:59Hz");   // prefiltering by a 59Hz lowpass filter
-		for (i = 0; i < 2; ++i) ptr += sprintf(ptr, "%- 8.8s", "1");
-		for (i = 0; i < 2; ++i) ptr += sprintf(ptr, "%- 32.32s", "");
-	}
-#endif
-	return buf;
-}
-
-const char *printEDFHeader()
-{
-	static char hbuf[257];
-#if 0
-	char strDur[128], strChan[16], strHeaderBytes[16];
-	hbuf[256] = 0; /* -.- */
-	sprintf(strDur, "%f", (1.0/((double)current.sampleRate)));
-	sprintf(strChan, "%d", current.channelCount);
-	sprintf(strHeaderBytes, "%d", 256*(current.channelCount+1));
-	sprintf(hbuf,
-			"%- 8.8s" // data format version number
-			"%- 80.80s"   // patient
-			"%- 80.80s"   // recorder
-			"%- 8.8s"     // date dd.mm.yy
-			"%- 8.8s"     // time hh.mm.ss
-			"%- 8.8s"     // bytes in header
-			"%- 44.44s"   // reserved "EDF+C" indicator
-			"%- 8.8s"     // number of data records or -1 for unknown for us
-      "%- 8.8s"     // duration, in seconds
-			"%- 4.4s",     // number of signals
-			"0",
-			getPatientName(),
-			getRecorderName(),
-			getDMY(),
-			getHMS(),
-			strHeaderBytes,
-			"EDF+C",
-			"-1",
-			strDur,
-			strChan
-			);
-#endif
-	return hbuf;
 }
 
 void updateHighSock(int val)
@@ -330,6 +259,8 @@ int main(int argc, char **argv)
 	struct sockaddr_in localAddress;
 	char c;
 	int i;
+	/* Initialize default configuration to p2Cfg */
+	makeREDFConfig(&current, &p2Cfg);
 	/* Open serial port */
 	printf("Opening serial port\n");
 	serfd = open_port();

@@ -1,6 +1,19 @@
 #include <assert.h>
 #include <openedf.h>
 
+void printHeader(const struct EDFDecodedHeader *hdr)
+{
+	printf("The data record count is %d\n", hdr->dataRecordCount);
+	printf("The data record channels is %d\n", hdr->dataRecordChannels);
+	printf("The data record seconds is %f\n", hdr->dataRecordSeconds);
+}
+
+void printChannelHeader(const struct EDFDecodedChannelHeader *chdr)
+{
+	printf("The number of samples is %d\n", chdr->sampleCount);
+	printf("The channel name is %s\n", chdr->label);
+}
+
 int main(int argc, char **argv)
 {
 	struct EDFDecodedConfig cfg;
