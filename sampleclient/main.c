@@ -1,32 +1,143 @@
-#include <stdio.h>
-#include <unistd.h>
-#include <ctype.h>
-#include <gtk/gtk.h>
-#include <string.h>
-#include <errno.h>
-#include <stdlib.h>
-#include <netdb.h>
 #include <assert.h>
-#include <sys/socket.h>
+#include <string.h>
+#include <stdlib.h>
+#include <openedf.h>
+#include <sys/time.h>
+#include <pctimer.h>
+#include <ctype.h>
+#include <nsutil.h>
+#include <nsnet.h>
 
-#define DEFAULTHOST "localhost"
-#define DEFAULTPORT 8336
-#define UPDATEINTERVAL 32
+#include <gtk/gtk.h>
 
+sock_t sock_fd;
+char EDFPacket[MAXHEADERLEN];
+GIOChannel *neuroserver;
+const char *helpText =
+"sampleClient   v 0.34 by Rudi Cilibrasi\n"
+"\n"
+"Usage:  sampleClient [options]\n"
+"\n"
+"        -p port          Port number to use (default 8336)\n"
+"        -n hostname      Host name of the NeuroCaster server to connect to\n"
+"                         (this defaults to 'localhost')\n"
+"        -e <intnum>      Integer ID specifying which EEG to log (default: 0)\n"
+"The filename specifies the new EDF file to create.\n"
+;
 
-GtkWidget *window;
-GtkWidget *onscreen;
-GdkPixmap *offscreen = NULL;
-unsigned char EDFHeader[256+32*256+1];
-unsigned char responseStr[256];
-int sock_fd;
-int responseCode = 0;
-int responsePos = 0;
-int readPos = 0;
-int haveReadEDFHeader = 0;
-int awaitingResponse = 0;
-int awaitingBanner = 0;
+#define MINLINELENGTH 4
+#define DELIMS " \r\n"
 
+struct Options {
+	char hostname[MAXLEN];
+	unsigned short port;
+	char filename[MAXLEN];
+	int eegNum;
+	int isFilenameSet;
+	int isLimittedTime;
+	double seconds;
+};
+
+static struct OutputBuffer ob;
+struct InputBuffer ib;
+char lineBuf[MAXLEN];
+int linePos = 0;
+
+struct Options opts;
+
+void idleHandler(void);
+void initGTKSystem(void);
+
+int isANumber(const char *str) {
+	int i;
+	for (i = 0; str[i]; ++i)
+		if (!isdigit(str[i]))
+			return 0;
+	return 1;
+}
+
+void serverDied(void)
+{
+	rprintf("Server died!\n");
+	exit(1);
+}
+
+int main(int argc, char **argv)
+{
+	char cmdbuf[80];
+	int EDFLen = MAXHEADERLEN;
+	struct EDFDecodedConfig cfg;
+	int i;
+	double t0;
+	int retval;
+	strcpy(opts.hostname, DEFAULTHOST);
+	opts.port = DEFAULTPORT;
+	gtk_init (&argc, &argv);
+	for (i = 1; i < argc; ++i) {
+		char *opt = argv[i];
+		if (opt[0] == '-') {
+			switch (opt[1]) {
+				case 'h':
+					printf("%s", helpText);
+					exit(0);
+					break;
+				case 'e':
+					opts.eegNum = atoi(argv[i+1]);
+					i += 1;
+					break;
+				case 'n':
+					strcpy(opts.hostname, argv[i+1]);
+					i += 1;
+					break;
+				case 'p':
+					opts.port = atoi(argv[i+1]);
+					i += 1;
+					break;
+			}
+		}
+		else {
+			fprintf(stderr, "Error: option %s not allowed", argv[i]);
+			exit(1);
+		}
+	}
+	rinitNetworking();
+
+	sock_fd = rsocket();
+	if (sock_fd < 0) {
+		perror("socket");
+		rexit(1);
+	}
+
+	retval = rconnectName(sock_fd, opts.hostname, opts.port);
+	if (retval != 0) {
+		rprintf("connect error\n");
+		rexit(1);
+	}
+
+	rprintf("Socket connected.\n");
+	fflush(stdout);
+
+	writeString(sock_fd, "display\n", &ob);
+	getOK(sock_fd, &ib);
+	rprintf("Finished display, doing getheader.\n");
+	sprintf(cmdbuf, "getheader %d\n", opts.eegNum);
+	writeString(sock_fd, cmdbuf, &ob);
+	getOK(sock_fd, &ib);
+	if (isEOF(sock_fd, &ib))
+		serverDied();
+	EDFLen = readline(sock_fd, EDFPacket, sizeof(EDFPacket), &ib);
+//	rprintf("Got EDF Header <%s>\n", EDFPacket);
+	readEDFString(&cfg, EDFPacket, EDFLen);
+	sprintf(cmdbuf, "watch %d\n", opts.eegNum);
+	writeString(sock_fd, cmdbuf, &ob);
+	getOK(sock_fd, &ib);
+	t0 = pctimer();
+	initGTKSystem();
+	for (;;) {
+		idleHandler();
+	}
+	return 0;
+}
 
 #define VIEWWIDTH 768
 #define VIEWHEIGHT 128
@@ -35,101 +146,11 @@ int awaitingBanner = 0;
 
 #define DRAWINGAREAHEIGHT (TOPMARGIN + VIEWHEIGHT*2 + MARGIN)
 
-void sendCommand(int fd, const char *str)
-{
-	char buf[1024];
-	int retval;
-	sprintf(buf, "%s\n", str);
-	awaitingResponse = 1;
-	responsePos = 0;
-	retval = write(fd, buf, strlen(buf));
-	if (retval != strlen(buf)) {
-		printf("Write error\n");
-		exit(1);
-	}
-}
+#define UPDATEINTERVAL 32
 
-void getEDFHeader(int sock_fd)
-{
-	sleep(1);
-	sendCommand(sock_fd, "GetEDFHeader");
-}
-
-int connectToNeuroServer()
-{
-	struct hostent *addr;
-	struct sockaddr_in saddr;
-	int sock_fd;
-	int retval;
-	addr = gethostbyname(DEFAULTHOST);
-	if (addr == NULL) { // couldn't find host
-		perror("gethostbyname");
-		exit(1);
-	}
-	sock_fd = socket(AF_INET, SOCK_STREAM, 0);
-	if (sock_fd < 0) {
-		perror("socket");
-		exit(1);
-	}
-	memset(&saddr, 0, sizeof(saddr));
-	saddr.sin_family = AF_INET;
-	saddr.sin_port = htons(DEFAULTPORT);
-	saddr.sin_addr = *(struct in_addr *) addr->h_addr;
-	retval = connect(sock_fd, (struct sockaddr *) &saddr, sizeof(saddr));
-	if (retval != 0) {
-		perror("connect");
-		exit(1);
-	}
-	return sock_fd;
-}
-
-void handleResponseChar(char c)
-{
-	responseStr[responsePos++] = c;
-	if (c == '\n') {
-		char buf[4];
-		responseStr[responsePos++] = 0;
-		buf[0] = responseStr[0];
-		buf[1] = responseStr[1];
-		buf[2] = responseStr[2];
-		buf[3] = 0;
-		responseCode = atoi(buf);
-		awaitingResponse = 0;
-		strtok(responseStr, "\r\n"); // remove these
-		printf("Got response <%s> and response code %d\n", responseStr, responseCode);
-	}
-}
-
-void handleEDFHeaderChar(char c)
-{
-	static int bytesNeeded;
-	EDFHeader[readPos++] = c;
-	if (readPos == 256) {
-		char buf[9];
-		memcpy(buf, EDFHeader+184, 8);
-		buf[8] = 0;
-		bytesNeeded = atoi(buf);
-	}
-	if (readPos == bytesNeeded) {
-		EDFHeader[readPos++] = '\0';
-		printf("Here is the EDF Header:\n%s\n", EDFHeader);
-		haveReadEDFHeader = 1;
-		sendCommand(sock_fd, "SendSamples");
-	}
-}
-
-void handleBannerChar(char c)
-{
-	static char nlCounter = 0;
-	putchar(c);
-	if (c == '\n') {
-		nlCounter += 1;
-		if (nlCounter == 1) {
-			printf("Finished receiving banner.\n");
-			awaitingBanner = 0;
-		}
-	}
-}
+GtkWidget *window;
+GtkWidget *onscreen;
+GdkPixmap *offscreen = NULL;
 
 static int sampleBuf[2][VIEWWIDTH];
 static int readSamples = 0;
@@ -151,11 +172,6 @@ void handleSample(int channel, int val)
 	if (updateCounter++ % UPDATEINTERVAL == 0) {
 		gtk_widget_draw(onscreen, NULL);
 	}
-}
-
-static gboolean destroy_event( GtkWidget *widget, GdkEventExpose *event )
-{
-	exit(0);
 }
 
 static gboolean expose_event( GtkWidget *widget, GdkEventExpose *event )
@@ -189,68 +205,58 @@ static gboolean expose_event( GtkWidget *widget, GdkEventExpose *event )
   return FALSE;
 }
 
-void handleSampleData(char c)
+void idleHandler(void)
 {
-	static int curSample = 0;
-	static int channelIndicator = 0;
-	if (isdigit(c)) {
-		curSample = curSample * 10 + (c - '0');
+	int i;
+	fd_set toread;
+	char *cur;
+	int vals[MAXCHANNELS + 5];
+	int curParam = 0;
+	int devNum, packetCounter, channels, *samples;
+
+	FD_ZERO(&toread);
+	FD_SET(sock_fd, &toread);
+	rselect(sock_fd+1, &toread, NULL, NULL);
+	linePos = readline(sock_fd, lineBuf, sizeof(EDFPacket), &ib);
+//	rprintf("Got line len %d: <%s>\n", linePos, lineBuf);
+	if (isEOF(sock_fd, &ib))
+		exit(0);
+	if (linePos < MINLINELENGTH)
 		return;
-	}
-	if (c == ' ') {
-		handleSample(channelIndicator, curSample);
-		curSample = 0;
-		channelIndicator += 1;
+	if (lineBuf[0] != '!')
 		return;
+	for (cur = strtok(lineBuf, DELIMS); cur ; cur = strtok(NULL, DELIMS)) {
+		if (isANumber(cur))
+			vals[curParam++] = atoi(cur);
+	// <devicenum> <packetcounter> <channels> data0 data1 data2 ...
+		if (curParam < 3)
+			continue;
+		devNum = vals[0];
+		packetCounter = vals[1];
+		channels = vals[2];
+		samples = vals + 3;
+//				for (i = 0; i < channels; ++i) {
+//					rprintf(" %d", samples[i]);
+//				}
 	}
-	if (c == '\r') return;
-	if (c == '\n') {
-		handleSample(channelIndicator, curSample);
-		channelIndicator = 0;
-		curSample = 0;
-		return;
-	}
-	printf("Got bad char: %c\n", c);
+//	rprintf("Got sample with %d channels: %d\n", channels, packetCounter);
+		for (i = 0; i < 2; ++i)
+			handleSample(i, samples[i]);
+}
+
+static gboolean destroy_event( GtkWidget *widget, GdkEventExpose *event )
+{
+	exit(0);
 }
 
 gboolean readHandler(GIOChannel *source, GIOCondition cond, gpointer data)
 {
-	gchar c;
-	gsize bytesRead = 0;
-	GIOStatus retval;
-	retval = g_io_channel_read_chars(source, &c, (gsize) 1, &bytesRead, NULL);
-//	printf("retval is %d\n", retval);
-//	printf("bytesRead is %d\n", bytesRead);
-	if (bytesRead == 1) {
-		if (awaitingBanner) {
-			handleBannerChar(c);
-			goto done;
-		}
-		if (awaitingResponse) {
-			handleResponseChar(c);
-			goto done;
-		}
-		if (!haveReadEDFHeader) {
-			handleEDFHeaderChar(c);
-			goto done;
-		}
-			handleSampleData(c);
-	} else {
-		printf("Server died / error.\n");
-		exit(1);
-	}
-done:
+	idleHandler();
 	return TRUE;
 }
 
-int main( int   argc,
-          char *argv[] )
+void initGTKSystem(void)
 {
-	
-	GIOChannel *neuroserver;
-	
-	gtk_init (&argc, &argv);
-    
 	window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
 	onscreen = (GtkWidget *) gtk_drawing_area_new();
 	gtk_drawing_area_size((GtkDrawingArea *) onscreen, 
@@ -261,18 +267,11 @@ int main( int   argc,
 	gtk_widget_show(onscreen);
 	gtk_widget_show(window);
     
-	sock_fd = connectToNeuroServer();
-
-	awaitingBanner = 1;
-
 	neuroserver = g_io_channel_unix_new(sock_fd);
 
 	g_io_add_watch(neuroserver, G_IO_IN, readHandler, NULL);
 
-	getEDFHeader(sock_fd);
-
 	gtk_main ();
 
-	return 0;
 }
 
