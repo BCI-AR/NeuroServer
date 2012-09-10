@@ -7,3 +7,11 @@ autom4te.cache/*
 
 # autoheader
 src/*.h.in
+
+# automake --add-missing
+INSTALL
+Makefile.in
+depcomp
+install-sh
+missing
+src/Makefile.in
