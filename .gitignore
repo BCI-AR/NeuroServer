@@ -29,3 +29,16 @@ src/.deps/
 src/Makefile
 src/config.h
 src/stamp-h1
+
+# make
+src/*.a
+src/*.o
+
+# make / binary files
+src/modeegdriver
+src/nsd
+src/ntest
+src/opencnvdriver
+src/readedf
+src/writebdf
+src/writeedf
